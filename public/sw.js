@@ -1,14 +1,14 @@
 /*
- * ABG Metal Works service worker — ONLINE-FIRST.
+ * Deus Caritas Schools service worker — ONLINE-FIRST.
  *
  * - HTML pages always come from the network and are NEVER cached (they hold business data and CSRF tokens).
  *   If the network is down, /offline.html is shown instead.
  * - Static files (/build/, /css/, /icons/, /images/, Google Fonts) are served stale-while-revalidate.
  * - Non-GET requests and /login, /logout, /api are never touched.
  *
- * When you change this file, bump CACHE_VERSION (abg-v2, abg-v3, ...) so phones pick up the update.
+ * When you change this file, bump CACHE_VERSION (dcs-v2, dcs-v3, ...) so phones pick up the update.
  */
-const CACHE_VERSION = 'masi-v1';
+const CACHE_VERSION = 'dcs-v1';
 
 const PRECACHE_URLS = [
     '/offline.html',
@@ -16,8 +16,7 @@ const PRECACHE_URLS = [
     '/icons/icon-512.png',
     '/icons/icon-maskable-512.png',
     '/icons/apple-touch-icon.png',
-    '/images/masi-logo-white.png',
-    '/images/masi-mark-white.png',
+    '/images/dcs-logo.png',
     '/css/abg-theme.css',
     '/css/login.css',
 ];

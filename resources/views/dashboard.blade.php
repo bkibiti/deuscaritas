@@ -14,6 +14,22 @@
     <div class="text-body-secondary small">{{ groupName() }} &middot; as at {{ now('Africa/Dar_es_Salaam')->format('l, j M Y') }}</div>
 </div>
 
+@foreach ($mine as $card)
+    <div class="col-sm-6 col-lg-3">
+        <div class="card">
+            <div class="card-body">
+                <div class="text-body-secondary small text-uppercase fw-semibold">{{ $card['label'] }}</div>
+                <div class="fs-3 fw-bold">{{ number_format($card['value']) }}</div>
+                @if ($card['url'])
+                    <a href="{{ $card['url'] }}" class="small">Open</a>
+                @endif
+            </div>
+        </div>
+    </div>
+@endforeach
+
+<div class="col-12"><h6 class="text-body-secondary mt-2">Set-up</h6></div>
+
 @foreach ($counts as $count)
     <div class="col-sm-6 col-lg-3">
         <div class="card">
@@ -27,14 +43,6 @@
         </div>
     </div>
 @endforeach
-
-<div class="col-12">
-    <div class="card">
-        <div class="card-body text-body-secondary">
-            Requests, approvals and the management dashboard will appear here once the request workflow is built.
-        </div>
-    </div>
-</div>
 @endsection
 
 @push("page_scripts")

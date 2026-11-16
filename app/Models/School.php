@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * One of the Deus Caritas schools. Its head is the Head of School step of the approval chain.
- * A school that has departments cannot be deleted, only deactivated.
+ * A school that has departments or requests cannot be deleted, only deactivated.
  */
 class School extends Model
 {
@@ -19,6 +19,7 @@ class School extends Model
     protected function casts(): array
     {
         return [
+            'head_user_id' => 'integer',
             'is_active' => 'boolean',
         ];
     }
@@ -35,6 +36,6 @@ class School extends Model
 
     public function isInUse(): bool
     {
-        return $this->departments()->exists();
+        return $this->departments()->exists() || SchoolRequest::where('school_id', $this->id)->exists();
     }
 }

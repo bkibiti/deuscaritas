@@ -41,6 +41,12 @@ class DepartmentController extends Controller
 
     public function destroy(Department $department): RedirectResponse
     {
+        if ($department->isInUse()) {
+            session()->flash('alert-danger', 'This department has requests and cannot be deleted. Deactivate it instead.');
+
+            return back();
+        }
+
         $department->delete();
 
         session()->flash('alert-success', 'Department deleted.');

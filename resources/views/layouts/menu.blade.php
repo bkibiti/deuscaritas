@@ -1,6 +1,10 @@
 @php
     $usersActive = request()->routeIs('roles.*', 'users.*');
-    $mastersActive = request()->routeIs('schools.*', 'departments.*', 'request-categories.*', 'reminders.*');
+    $mastersActive = request()->routeIs('schools.*', 'departments.*', 'request-categories.*', 'workflow-steps.*', 'reminders.*');
+    $requestScope = request()->routeIs('requests.index') ? (in_array(request('scope'), ['inbox', 'all'], true) ? request('scope') : 'mine') : null;
+    $requestsActive = request()->routeIs('requests.*');
+    $inventoryActive = request()->routeIs('inventory.*');
+    $awaitingMyAction = \App\Models\SchoolRequest::awaitingActionBy(auth()->user())->count();
 @endphp
 
 <li class="nav-item">
@@ -9,6 +13,99 @@
         <p>Dashboard</p>
     </a>
 </li>
+
+<li class="nav-item {{ $requestsActive ? 'menu-open' : '' }}">
+    <a href="#" class="nav-link {{ $requestsActive ? 'active' : '' }}">
+        <i class="nav-icon bi bi-file-earmark-text"></i>
+        <p>
+            Requests
+            @if ($awaitingMyAction > 0)
+                <span class="badge text-bg-warning">{{ $awaitingMyAction }}</span>
+            @endif
+            <i class="nav-arrow bi bi-chevron-right"></i>
+        </p>
+    </a>
+    <ul class="nav nav-treeview">
+        <li class="nav-item">
+            <a href="{{ route('requests.create') }}" class="nav-link {{ request()->routeIs('requests.create') ? 'active' : '' }}">
+                <i class="nav-icon bi bi-circle"></i>
+                <p>New Request</p>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="{{ route('requests.index') }}" class="nav-link {{ $requestScope === 'mine' ? 'active' : '' }}">
+                <i class="nav-icon bi bi-circle"></i>
+                <p>My Requests</p>
+            </a>
+        </li>
+        <li class="nav-item">
+            <a href="{{ route('requests.index', ['scope' => 'inbox']) }}" class="nav-link {{ $requestScope === 'inbox' ? 'active' : '' }}">
+                <i class="nav-icon bi bi-circle"></i>
+                <p>
+                    Awaiting My Action
+                    @if ($awaitingMyAction > 0)
+                        <span class="badge text-bg-warning">{{ $awaitingMyAction }}</span>
+                    @endif
+                </p>
+            </a>
+        </li>
+        @can('View All Requests')
+            <li class="nav-item">
+                <a href="{{ route('requests.index', ['scope' => 'all']) }}" class="nav-link {{ $requestScope === 'all' ? 'active' : '' }}">
+                    <i class="nav-icon bi bi-circle"></i>
+                    <p>All Requests</p>
+                </a>
+            </li>
+        @endcan
+    </ul>
+</li>
+
+@canany(['View Inventory Items', 'View Suppliers', 'View Inventory Setup'])
+    <li class="nav-item {{ $inventoryActive ? 'menu-open' : '' }}">
+        <a href="#" class="nav-link {{ $inventoryActive ? 'active' : '' }}">
+            <i class="nav-icon bi bi-box-seam"></i>
+            <p>Inventory <i class="nav-arrow bi bi-chevron-right"></i></p>
+        </a>
+        <ul class="nav nav-treeview">
+            @can('View Inventory Items')
+                <li class="nav-item">
+                    <a href="{{ route('inventory.items.index') }}" class="nav-link {{ request()->routeIs('inventory.items.*') ? 'active' : '' }}">
+                        <i class="nav-icon bi bi-circle"></i>
+                        <p>Items</p>
+                    </a>
+                </li>
+            @endcan
+            @can('View Suppliers')
+                <li class="nav-item">
+                    <a href="{{ route('inventory.suppliers.index') }}" class="nav-link {{ request()->routeIs('inventory.suppliers.*') ? 'active' : '' }}">
+                        <i class="nav-icon bi bi-circle"></i>
+                        <p>Suppliers</p>
+                    </a>
+                </li>
+            @endcan
+            @can('View Inventory Setup')
+                <li class="nav-item">
+                    <a href="{{ route('inventory.categories.index') }}" class="nav-link {{ request()->routeIs('inventory.categories.*') ? 'active' : '' }}">
+                        <i class="nav-icon bi bi-circle"></i>
+                        <p>Item Categories</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('inventory.units.index') }}" class="nav-link {{ request()->routeIs('inventory.units.*') ? 'active' : '' }}">
+                        <i class="nav-icon bi bi-circle"></i>
+                        <p>Units of Measure</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('inventory.stores.index') }}" class="nav-link {{ request()->routeIs('inventory.stores.*') ? 'active' : '' }}">
+                        <i class="nav-icon bi bi-circle"></i>
+                        <p>Stores</p>
+                    </a>
+                </li>
+            @endcan
+        </ul>
+    </li>
+@endcanany
 
 @canany(['View User Management', 'View Users', 'Manage Users', 'View Roles', 'Manage Roles'])
     <li class="nav-item {{ $usersActive ? 'menu-open' : '' }}">
@@ -37,7 +134,7 @@
     </li>
 @endcanany
 
-@canany(['View Masters', 'View Schools', 'View Departments', 'View Request Categories', 'View Reminders'])
+@canany(['View Masters', 'View Schools', 'View Departments', 'View Request Categories', 'View Approval Chain', 'View Reminders'])
     <li class="nav-item {{ $mastersActive ? 'menu-open' : '' }}">
         <a href="#" class="nav-link {{ $mastersActive ? 'active' : '' }}">
             <i class="nav-icon bi bi-list-ul"></i>
@@ -65,6 +162,14 @@
                     <a href="{{ route('request-categories.index') }}" class="nav-link {{ request()->routeIs('request-categories.*') ? 'active' : '' }}">
                         <i class="nav-icon bi bi-circle"></i>
                         <p>Request Categories</p>
+                    </a>
+                </li>
+            @endcan
+            @can('View Approval Chain')
+                <li class="nav-item">
+                    <a href="{{ route('workflow-steps.index') }}" class="nav-link {{ request()->routeIs('workflow-steps.*') ? 'active' : '' }}">
+                        <i class="nav-icon bi bi-circle"></i>
+                        <p>Approval Chain</p>
                     </a>
                 </li>
             @endcan

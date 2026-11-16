@@ -150,12 +150,11 @@
 
         <aside class="app-sidebar bg-body-secondary shadow" data-bs-theme="dark">
             <div class="sidebar-brand">
-                <a href="{{ route('home') }}" class="brand-link masi-brand" title="{{ $businessName }}">
-                    {{-- Mark shows when the sidebar is collapsed; full logo when expanded --}}
-                    <img src="{{ asset('images/masi-mark-white.png') }}" alt="" class="brand-image masi-brand__mark">
-                    <span class="brand-text">
-                        <img src="{{ groupLogoWhiteUrl() }}" alt="{{ $businessName }}" class="masi-brand__logo">
-                    </span>
+                <a href="{{ route('home') }}" class="brand-link" title="{{ $businessName }}">
+                    @if ($logoUrl)
+                        <img src="{{ $logoUrl }}" alt="" class="brand-image">
+                    @endif
+                    <span class="brand-text fw-semibold">{{ $businessName }}</span>
                 </a>
             </div>
             <div class="sidebar-wrapper">

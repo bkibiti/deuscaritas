@@ -2,6 +2,7 @@
 
 namespace App\Providers;
 
+use Illuminate\Pagination\Paginator;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -19,6 +20,9 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // The layout is Bootstrap 5, so pagination links must be too (Laravel's default is Tailwind).
+        Paginator::useBootstrapFive();
+
         // Role/permission rows in model_has_roles now use 'App\Models\User'
         // (converted by abg_update.sql), so no morph map is needed.
 

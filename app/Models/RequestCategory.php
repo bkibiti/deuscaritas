@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * The kind of thing a request asks for (maintenance, ICT support, transport...). It also
@@ -21,6 +22,19 @@ class RequestCategory extends Model
             'director_cost_threshold' => 'decimal:2',
             'is_active' => 'boolean',
         ];
+    }
+
+    public function requests(): HasMany
+    {
+        return $this->hasMany(SchoolRequest::class);
+    }
+
+    /**
+     * A category used on a request cannot be deleted, only deactivated.
+     */
+    public function isInUse(): bool
+    {
+        return $this->requests()->exists();
     }
 
     /**

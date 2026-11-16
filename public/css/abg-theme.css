@@ -1,20 +1,20 @@
-/* MASI brand theme (navy + orange; variable names kept from the ABG base) — layered on top of AdminLTE 4 / Bootstrap 5. Layout only; charts/data use the data colours below. */
+/* Deus Caritas theme (school blue and white; variable names kept from the ABG base) — layered on top of AdminLTE 4 / Bootstrap 5. Layout only; charts/data use the data colours below. */
 
 :root {
-    --abg-black: #0E1430;      /* dark MASI navy: sidebar, table headers, dark cards */
+    --abg-black: #162C66;      /* dark school blue: sidebar, table headers, dark cards */
 
-    /* Bootstrap primary = MASI navy (badges, links, focus, progress bars) */
-    --bs-primary: #1A2358;
-    --bs-primary-rgb: 26, 35, 88;
-    --bs-link-color: #2A3A8C;
-    --bs-link-color-rgb: 42, 58, 140;
-    --bs-link-hover-color: #1A2358;
-    --bs-link-hover-color-rgb: 26, 35, 88;
-    --abg-gold: #C4512B;       /* MASI orange, darkened so white text passes contrast */
-    --abg-gold-hover: #A63F1B;
-    --abg-gold-dark-text: #A63F1B;
-    --masi-orange: #E0633A;    /* logo orange, for accents and charts */
-    --masi-orange-on-dark: #F08A62;
+    /* Bootstrap primary = school blue (badges, links, focus, progress bars) */
+    --bs-primary: #1F3D8A;
+    --bs-primary-rgb: 31, 61, 138;
+    --bs-link-color: #1F3D8A;
+    --bs-link-color-rgb: 31, 61, 138;
+    --bs-link-hover-color: #162C66;
+    --bs-link-hover-color-rgb: 22, 44, 102;
+    --abg-gold: #2C66C4;       /* accent blue (active menu, main buttons); white text passes contrast */
+    --abg-gold-hover: #2353A3;
+    --abg-gold-dark-text: #1F4C96;
+    --masi-orange: #3F7FE0;    /* lighter blue, for accents */
+    --masi-orange-on-dark: #9CC0F5;
 
     --abg-bg: #F4F5F8;
     --abg-card: #FFFFFF;
@@ -66,11 +66,12 @@ body,
 }
 
 .app-sidebar .sidebar-brand {
-    border-bottom: 1px solid #232B52;
+    border-bottom: 1px solid #2A4589;
 }
 
 .app-sidebar .sidebar-brand .brand-text {
     color: #FFFFFF;
+    font-size: 1rem;
 }
 
 .app-sidebar .nav-sidebar > .nav-item > .nav-link,
@@ -1546,7 +1547,7 @@ table.dataTable tbody tr:hover {
     display: none;
 }
 
-/* Active menu item: orange. AdminLTE's own (more specific) rule otherwise wins with a faint white tint. */
+/* Active menu item: accent blue. AdminLTE's own (more specific) rule otherwise wins with a faint white tint. */
 .app-sidebar .sidebar-menu .nav-item > .nav-link.active,
 .app-sidebar .sidebar-menu .nav-treeview > .nav-item > .nav-link.active {
     background-color: var(--abg-gold) !important;

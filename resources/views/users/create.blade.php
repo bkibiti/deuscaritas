@@ -70,6 +70,17 @@
                                 </div>
                         </div>
                         <div class="row mb-3">
+                                <label for="department_id" class="col-md-4 col-form-label text-md-end">{{ __('Department') }}</label>
+                                <div class="col-md-8">
+                                    <select class="form-select" id="department_id" name="department_id">
+                                        <option value="">Not set</option>
+                                        @foreach($departments as $department)
+                                            <option value="{{$department->id}}" {{ ((string) $department->id === (string) old('department_id') ? "selected":"") }}>{{$department->name}} ({{ $department->school?->name ?: 'All schools' }})</option>
+                                        @endforeach
+                                    </select>
+                                </div>
+                        </div>
+                        <div class="row mb-3">
                                 <label for="new_password" class="col-md-4 col-form-label text-md-end">Password <font color="red">*</font></label>
 
                                 <div class="col-md-8">

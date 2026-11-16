@@ -27,7 +27,7 @@ function getSettings($settingName)
 }
 
 /**
- * Group name from Settings, falling back to APP_NAME.
+ * Organisation name from Settings, falling back to APP_NAME.
  */
 function groupName(): string
 {
@@ -37,13 +37,13 @@ function groupName(): string
 }
 
 /**
- * Public URL of the group logo: the bundled MASI logo, or the one uploaded under Settings if
- * the bundled file is missing.
+ * Public URL of the school logo: the bundled one, or the one uploaded under Settings if the
+ * bundled file is missing.
  */
 function groupLogoUrl(): ?string
 {
-    if (file_exists(public_path('images/masi-logo.png'))) {
-        return asset('images/masi-logo.png').'?v='.filemtime(public_path('images/masi-logo.png'));
+    if (file_exists(public_path('images/dcs-logo.png'))) {
+        return asset('images/dcs-logo.png').'?v='.filemtime(public_path('images/dcs-logo.png'));
     }
 
     $logo = getSettings('logo');
@@ -52,25 +52,17 @@ function groupLogoUrl(): ?string
 }
 
 /**
- * Absolute file path of the group logo, for PDFs.
+ * Absolute file path of the school logo, for PDFs.
  */
 function groupLogoPath(): ?string
 {
-    if (file_exists(public_path('images/masi-logo.png'))) {
-        return public_path('images/masi-logo.png');
+    if (file_exists(public_path('images/dcs-logo.png'))) {
+        return public_path('images/dcs-logo.png');
     }
 
     $logo = getSettings('logo');
 
     return $logo !== 'NA' && filled($logo) && file_exists(public_path('logo/'.$logo)) ? public_path('logo/'.$logo) : null;
-}
-
-/**
- * White version of the MASI logo, for dark backgrounds (sidebar, login panel).
- */
-function groupLogoWhiteUrl(): string
-{
-    return asset('images/masi-logo-white.png').'?v='.@filemtime(public_path('images/masi-logo-white.png'));
 }
 
 /**
@@ -98,6 +90,14 @@ function initials(string $name): string
     $initials = array_map(fn ($word) => mb_strtoupper(mb_substr($word, 0, 1)), $words);
 
     return implode('', array_slice($initials, 0, 2)) ?: '?';
+}
+
+/**
+ * A stored (UTC) date-time shown in Dar es Salaam time, e.g. "16 Nov 2026 17:30".
+ */
+function displayTime($dateTime, string $format = 'j M Y H:i'): string
+{
+    return $dateTime ? Carbon::parse($dateTime)->timezone('Africa/Dar_es_Salaam')->format($format) : '';
 }
 
 function formatCompactAmount(float $amount): string

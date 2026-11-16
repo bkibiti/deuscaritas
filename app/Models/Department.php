@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
  * A department that raises requests. Its head is the Head of Department step of the approval
@@ -18,6 +19,7 @@ class Department extends Model
     protected function casts(): array
     {
         return [
+            'head_user_id' => 'integer',
             'is_active' => 'boolean',
         ];
     }
@@ -30,5 +32,18 @@ class Department extends Model
     public function head(): BelongsTo
     {
         return $this->belongsTo(User::class, 'head_user_id');
+    }
+
+    public function requests(): HasMany
+    {
+        return $this->hasMany(SchoolRequest::class);
+    }
+
+    /**
+     * A department that has raised requests cannot be deleted, only deactivated.
+     */
+    public function isInUse(): bool
+    {
+        return $this->requests()->exists();
     }
 }

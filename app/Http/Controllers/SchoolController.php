@@ -40,7 +40,7 @@ class SchoolController extends Controller
     public function destroy(School $school): RedirectResponse
     {
         if ($school->isInUse()) {
-            session()->flash('alert-danger', 'This school has departments and cannot be deleted. Deactivate it instead.');
+            session()->flash('alert-danger', 'This school has departments or requests and cannot be deleted. Deactivate it instead.');
 
             return back();
         }

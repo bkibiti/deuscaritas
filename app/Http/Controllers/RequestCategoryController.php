@@ -37,6 +37,12 @@ class RequestCategoryController extends Controller
 
     public function destroy(RequestCategory $requestCategory): RedirectResponse
     {
+        if ($requestCategory->isInUse()) {
+            session()->flash('alert-danger', 'This category is used on requests and cannot be deleted. Deactivate it instead.');
+
+            return back();
+        }
+
         $requestCategory->delete();
 
         session()->flash('alert-success', 'Request category deleted.');
