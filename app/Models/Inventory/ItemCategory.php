@@ -3,23 +3,17 @@
 namespace App\Models\Inventory;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * A grouping of items within one store (Cereals in the Food Store, Cement in Building
- * Materials), used to organise lists and reports.
+ * A stock category (Food Stock, Stationery Stock, Cleaning Materials...), shared by every
+ * store and used to organise lists and reports.
  */
 class ItemCategory extends Model
 {
     protected $table = 'inv_item_categories';
 
-    protected $fillable = ['store_id', 'name'];
-
-    public function store(): BelongsTo
-    {
-        return $this->belongsTo(Store::class);
-    }
+    protected $fillable = ['name'];
 
     public function items(): HasMany
     {

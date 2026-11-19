@@ -6,10 +6,11 @@ use App\Http\Controllers\DepartmentController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\Inventory\ItemCategoryController;
 use App\Http\Controllers\Inventory\ItemController;
+use App\Http\Controllers\Inventory\StockBalanceController;
+use App\Http\Controllers\Inventory\StockInController;
 use App\Http\Controllers\Inventory\StoreController as InventoryStoreController;
 use App\Http\Controllers\Inventory\SupplierController;
 use App\Http\Controllers\Inventory\UnitController as InventoryUnitController;
-use App\Http\Controllers\ReminderController;
 use App\Http\Controllers\RequestAttachmentController;
 use App\Http\Controllers\RequestCategoryController;
 use App\Http\Controllers\RequestController;
@@ -57,7 +58,7 @@ Route::middleware(['auth', EnsurePasswordIsNotExpired::class])->group(function (
     Route::get('requests/{schoolRequest}/attachments/{attachment}', [RequestAttachmentController::class, 'download'])->name('requests.attachments.download');
     Route::delete('requests/{schoolRequest}/attachments/{attachment}', [RequestAttachmentController::class, 'destroy'])->name('requests.attachments.destroy');
 
-    // Approval chain (Masters)
+    // Approval chain (Administration)
     Route::get('masters/approval-chain', [WorkflowStepController::class, 'index'])->name('workflow-steps.index')->middleware('can:View Approval Chain');
     Route::put('masters/approval-chain/{workflowStep}', [WorkflowStepController::class, 'update'])->name('workflow-steps.update')->middleware('can:Manage Approval Chain');
 
@@ -83,32 +84,39 @@ Route::middleware(['auth', EnsurePasswordIsNotExpired::class])->group(function (
         Route::put('items/{item}', [ItemController::class, 'update'])->name('items.update')->middleware('can:Manage Inventory Items');
         Route::delete('items/{item}', [ItemController::class, 'destroy'])->name('items.destroy')->middleware('can:Manage Inventory Items');
 
+        Route::get('stock', [StockBalanceController::class, 'index'])->name('stock.index')->middleware('can:View Stock');
+        Route::get('stock/{store}/{item}', [StockBalanceController::class, 'card'])->name('stock.card')->middleware('can:View Stock');
+
+        Route::get('stock-in', [StockInController::class, 'index'])->name('stock-in.index')->middleware('can:View Stock');
+        Route::get('stock-in/create', [StockInController::class, 'create'])->name('stock-in.create')->middleware('can:Receive Stock');
+        Route::post('stock-in', [StockInController::class, 'store'])->name('stock-in.store')->middleware('can:Receive Stock');
+        Route::get('stock-in/{document}', [StockInController::class, 'show'])->name('stock-in.show')->middleware('can:View Stock');
+        Route::post('stock-in/{document}/confirm', [StockInController::class, 'confirm'])->name('stock-in.confirm')->middleware('can:Receive Stock');
+        Route::delete('stock-in/{document}', [StockInController::class, 'destroy'])->name('stock-in.destroy')->middleware('can:Receive Stock');
+
         Route::get('suppliers', [SupplierController::class, 'index'])->name('suppliers.index')->middleware('can:View Suppliers');
         Route::post('suppliers', [SupplierController::class, 'store'])->name('suppliers.store')->middleware('can:Manage Suppliers');
         Route::put('suppliers/{supplier}', [SupplierController::class, 'update'])->name('suppliers.update')->middleware('can:Manage Suppliers');
         Route::delete('suppliers/{supplier}', [SupplierController::class, 'destroy'])->name('suppliers.destroy')->middleware('can:Manage Suppliers');
     });
 
-    // Schools (Masters)
+    // Schools (Administration)
     Route::get('masters/schools', [SchoolController::class, 'index'])->name('schools.index')->middleware('can:View Schools');
     Route::post('masters/schools', [SchoolController::class, 'store'])->name('schools.store')->middleware('can:Manage Schools');
     Route::put('masters/schools/{school}', [SchoolController::class, 'update'])->name('schools.update')->middleware('can:Manage Schools');
     Route::delete('masters/schools/{school}', [SchoolController::class, 'destroy'])->name('schools.destroy')->middleware('can:Manage Schools');
 
-    // Departments (Masters)
+    // Departments (Administration)
     Route::get('masters/departments', [DepartmentController::class, 'index'])->name('departments.index')->middleware('can:View Departments');
     Route::post('masters/departments', [DepartmentController::class, 'store'])->name('departments.store')->middleware('can:Manage Departments');
     Route::put('masters/departments/{department}', [DepartmentController::class, 'update'])->name('departments.update')->middleware('can:Manage Departments');
     Route::delete('masters/departments/{department}', [DepartmentController::class, 'destroy'])->name('departments.destroy')->middleware('can:Manage Departments');
 
-    // Request categories (Masters)
+    // Request categories (Administration)
     Route::get('masters/request-categories', [RequestCategoryController::class, 'index'])->name('request-categories.index')->middleware('can:View Request Categories');
     Route::post('masters/request-categories', [RequestCategoryController::class, 'store'])->name('request-categories.store')->middleware('can:Manage Request Categories');
     Route::put('masters/request-categories/{requestCategory}', [RequestCategoryController::class, 'update'])->name('request-categories.update')->middleware('can:Manage Request Categories');
     Route::delete('masters/request-categories/{requestCategory}', [RequestCategoryController::class, 'destroy'])->name('request-categories.destroy')->middleware('can:Manage Request Categories');
-
-    // reminder routes
-    Route::resource('reminders', ReminderController::class)->middleware('can:View Reminders');
 
     // Configurations Routes
     Route::get('/configurations', [ConfigurationsController::class, 'index'])->name('configurations.index')->middleware('can:View Settings');

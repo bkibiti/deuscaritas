@@ -11,14 +11,6 @@
 
 @section("content")
 <div class="col-lg-9">
-    @if (! $department)
-        <div class="card">
-            <div class="card-body">
-                You are not linked to a department yet, so you cannot raise a request.
-                Ask the system administrator to set your department under Users.
-            </div>
-        </div>
-    @else
         <div class="card">
             <div class="card-header"><h3 class="card-title">New request</h3></div>
             <form method="POST" action="{{ route('requests.store') }}" enctype="multipart/form-data">
@@ -26,7 +18,6 @@
                 @include('requests._form')
             </form>
         </div>
-    @endif
 </div>
 @endsection
 

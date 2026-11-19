@@ -22,19 +22,16 @@ class SchoolTest extends TestCase
         $this->user->givePermissionTo('Manage Schools');
     }
 
-    public function test_store_creates_a_school_with_its_head(): void
+    public function test_store_creates_a_school(): void
     {
-        $head = User::factory()->create();
-
         $response = $this->actingAs($this->user)->post(route('schools.store'), [
             'name' => 'Deus Caritas Primary',
             'code' => 'DCP',
-            'head_user_id' => $head->id,
             'is_active' => '1',
         ]);
 
         $response->assertSessionHasNoErrors();
-        $this->assertDatabaseHas('schools', ['name' => 'Deus Caritas Primary', 'code' => 'DCP', 'head_user_id' => $head->id, 'is_active' => true]);
+        $this->assertDatabaseHas('schools', ['name' => 'Deus Caritas Primary', 'code' => 'DCP', 'is_active' => true]);
     }
 
     public function test_store_rejects_a_duplicate_name(): void
@@ -78,7 +75,7 @@ class SchoolTest extends TestCase
     public function test_the_schools_index_renders(): void
     {
         $this->user->givePermissionTo('View Schools');
-        School::create(['name' => 'Primary', 'head_user_id' => $this->user->id, 'is_active' => true]);
+        School::create(['name' => 'Primary', 'is_active' => true]);
 
         $this->actingAs($this->user)->get(route('schools.index'))->assertOk()->assertSee('Primary');
     }

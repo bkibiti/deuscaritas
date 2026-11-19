@@ -10,16 +10,7 @@
             </div>
             <div class="modal-body">
                 <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Store <span class="text-danger">*</span></label>
-                        <select name="store_id" class="form-select category-store" required>
-                            <option value="">Choose a store</option>
-                            @foreach ($stores as $store)
-                                <option value="{{ $store->id }}" @selected((string) old('store_id') === (string) $store->id)>{{ $store->name }}{{ $store->is_active ? '' : ' (inactive)' }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-6">
+                    <div class="col-12">
                         <label class="form-label">Name <span class="text-danger">*</span></label>
                         <input type="text" name="name" class="form-control category-name" maxlength="100" required value="{{ old('name') }}">
                     </div>
@@ -49,7 +40,6 @@
                 $form.find('[name=_action]').val(b.data('action'));
                 $form.find('[name=_method]').val(b.data('method'));
                 $modal.find('.modal-title').text(b.data('title'));
-                $form.find('.category-store').val(b.data('store') ?? '');
                 $form.find('.category-name').val(b.data('name') ?? '');
             });
         });

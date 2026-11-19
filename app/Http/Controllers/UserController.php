@@ -2,7 +2,7 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Department;
+use App\Models\School;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -17,10 +17,10 @@ class UserController extends Controller
 
     public function index()
     {
-        $users = User::with('department.school')->where('status', 1)->orderBy('name')->get();
-        $departments = $this->departments();
+        $users = User::with('school')->where('status', 1)->orderBy('name')->get();
+        $schools = $this->schools();
 
-        return view('users.index', compact('users', 'departments'));
+        return view('users.index', compact('users', 'schools'));
     }
 
     public function store(Request $request)
@@ -29,7 +29,7 @@ class UserController extends Controller
             'name' => 'required|string|max:50',
             'position' => 'nullable|string|max:50',
             'role' => 'required',
-            'department_id' => 'nullable|integer|exists:departments,id',
+            'school_id' => 'nullable|integer|exists:schools,id',
             'email' => 'string|email|max:255',
             'username' => 'required|string|max:20|unique:users',
             'password' => 'required|string|min:6|confirmed',
@@ -48,7 +48,7 @@ class UserController extends Controller
             $user->position = $request->position;
             $user->email = $request->email;
             $user->mobile = $request->mobile;
-            $user->department_id = $request->department_id ?: null;
+            $user->school_id = $request->school_id ?: null;
             $user->status = '1';
             $user->password = Hash::make($request->password);
             $user->save();
@@ -67,7 +67,7 @@ class UserController extends Controller
             'name1' => 'required|string|max:100',
             'role1' => 'required',
             'position1' => 'nullable|string|max:50',
-            'department_id1' => 'nullable|integer|exists:departments,id',
+            'school_id1' => 'nullable|integer|exists:schools,id',
             'email1' => 'nullable|string|email|max:255',
         ]);
 
@@ -81,7 +81,7 @@ class UserController extends Controller
         $user->position = $request->position1;
         $user->email = $request->email1;
         $user->mobile = $request->mobile1;
-        $user->department_id = $request->department_id1 ?: null;
+        $user->school_id = $request->school_id1 ?: null;
         $user->save();
 
         $user->syncRoles($roles);
@@ -169,17 +169,16 @@ class UserController extends Controller
     }
 
     /**
-     * Departments for the user forms, each with its school so two departments of the same
-     * name can be told apart.
+     * Schools for the user forms.
      */
-    private function departments()
+    private function schools()
     {
-        return Department::with('school')->orderBy('name')->get();
+        return School::where('is_active', true)->orderBy('name')->get(['id', 'name']);
     }
 
     public function search(Request $request)
     {
-        $users = User::with('department.school')->orderBy('name');
+        $users = User::with('school')->orderBy('name');
 
         if ($request->status == '1') {
             $users->where('status', 1);
@@ -189,11 +188,11 @@ class UserController extends Controller
         }
 
         $users = $users->get();
-        $departments = $this->departments();
+        $schools = $this->schools();
 
         $request->flash();
 
-        return view('users.index', compact('users', 'departments'));
+        return view('users.index', compact('users', 'schools'));
 
     }
 }

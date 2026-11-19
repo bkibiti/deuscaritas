@@ -6,7 +6,7 @@
 
 @section('content-sub-title')
     <li class="breadcrumb-item"><a href="{{ route('home') }}"><i class="bi bi-house"></i></a></li>
-    <li class="breadcrumb-item active">Masters / Schools</li>
+    <li class="breadcrumb-item active">Administration / Schools</li>
 @endsection
 
 @section("content")
@@ -30,7 +30,7 @@
                         <tr>
                             <th>Name</th>
                             <th>Code</th>
-                            <th>Head of School</th>
+                            <th class="text-end">Staff</th>
                             <th class="text-end">Departments</th>
                             <th>Status</th>
                             <th></th>
@@ -41,7 +41,7 @@
                             <tr>
                                 <td>{{ $school->name }}</td>
                                 <td>{{ $school->code ?: '—' }}</td>
-                                <td>{{ $school->head?->name ?: '—' }}</td>
+                                <td class="text-end">{{ $school->users_count }}</td>
                                 <td class="text-end">{{ $school->departments_count }}</td>
                                 <td><span class="badge {{ $school->is_active ? 'text-bg-success' : 'text-bg-secondary' }}">{{ $school->is_active ? 'Active' : 'Inactive' }}</span></td>
                                 <td class="text-end" style="white-space: nowrap">
@@ -49,7 +49,7 @@
                                         <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#school-modal"
                                             data-action="{{ route('schools.update', $school) }}" data-method="PUT" data-title="Edit school"
                                             data-name="{{ $school->name }}" data-code="{{ $school->code }}"
-                                            data-head="{{ $school->head_user_id }}" data-active="{{ $school->is_active ? 1 : 0 }}">
+                                            data-active="{{ $school->is_active ? 1 : 0 }}">
                                             Edit
                                         </button>
                                         @if ($school->departments_count === 0)

@@ -67,7 +67,7 @@
                 <th>Mobile</th>
                 <th>Role</th>
                 <th>Position</th>
-                <th>Department</th>
+                <th>School</th>
                 <th>Status</th>
                 @can('Manage Users')
                 <th>Actions</th>
@@ -83,7 +83,7 @@
                 <td>{{$user->mobile}}</td>
                 <td>{{ implode(", ", $user->getRoleNames()->toArray()) }}</td>
                 <td>{{$user->position}}</td>
-                <td>{{ $user->department?->name }}</td>
+                <td>{{ $user->school?->name ?? 'All schools' }}</td>
                 <td>
                     @if ($user->status == 1)
                         <h6 class="m-0 text-success">Active</h6>
@@ -102,8 +102,8 @@
                             <button class="btn btn-info btn-sm" data-name="{{$user->name}}"
                                 data-email="{{$user->email}}" data-id="{{$user->id}}" data-username="{{$user->username}}"
                                 data-job="{{$user->position}}"  data-mobile="{{$user->mobile}}"
-                                data-role-id="{{ optional($user->roles->first())->id }}"
-                                data-department-id="{{ $user->department_id }}"
+                                data-role-ids="{{ $user->roles->pluck('id')->toJson() }}"
+                                data-school-id="{{ $user->school_id }}"
                                 type="button" data-bs-toggle="modal" data-bs-target="#editUser">Edit</button>
                         </a>
 
@@ -160,7 +160,7 @@
         var email=button.data('email')
         var mobile=button.data('mobile')
         var job=button.data('job')
-        var roleId = button.data('role-id')
+        var roleIds = (button.data('role-ids') || []).map(String)
         var id=button.data('id')
         var modal = $(this)
 
@@ -171,8 +171,8 @@
         modal.find('.modal-body #position1').val(job);
         modal.find('.modal-body #mobile1').val(mobile).change();
         modal.find('.modal-body #UserID').val(id);
-        modal.find('.modal-body #role1').val(roleId ? String(roleId) : '').change();
-        modal.find('.modal-body #department_id1').val(button.data('department-id') ? String(button.data('department-id')) : '');
+        modal.find('.modal-body #role1').val(roleIds).change();
+        modal.find('.modal-body #school_id1').val(button.data('school-id') ? String(button.data('school-id')) : '');
 
       });//end edit
 

@@ -6,7 +6,7 @@
 
 @section('content-sub-title')
     <li class="breadcrumb-item"><a href="{{ route('home') }}"><i class="bi bi-house"></i></a></li>
-    <li class="breadcrumb-item active">Masters / Approval Chain</li>
+    <li class="breadcrumb-item active">Administration / Approval Chain</li>
 @endsection
 
 @section("content")
@@ -20,7 +20,7 @@
                         <tr>
                             <th>#</th>
                             <th>Step</th>
-                            <th>Who signs</th>
+                            <th>Role that signs</th>
                             <th>When</th>
                             <th>In use</th>
                             <th></th>
@@ -32,22 +32,23 @@
                                 <td>{{ $step->position }}</td>
                                 <td>{{ $step->name }}</td>
                                 <td>
-                                    @if ($step->hasNamedApprover())
-                                        @can('Manage Approval Chain')
-                                            <select name="user_id" form="workflow-step-{{ $step->id }}" class="form-select form-select-sm" style="min-width: 220px">
-                                                <option value="">Not set</option>
-                                                @foreach ($users as $user)
-                                                    <option value="{{ $user->id }}" @selected($step->user_id === $user->id)>{{ $user->name }}</option>
-                                                @endforeach
-                                            </select>
-                                        @else
-                                            {{ $step->user?->name ?: 'Not set' }}
-                                        @endcan
-                                    @elseif ($step->approver_type === 'department_head')
-                                        The head of the request's department <span class="text-body-secondary small">(set under Departments)</span>
+                                    @can('Manage Approval Chain')
+                                        <select name="role_id" form="workflow-step-{{ $step->id }}" class="form-select form-select-sm" style="min-width: 220px">
+                                            <option value="">Not set</option>
+                                            @foreach ($roles as $role)
+                                                <option value="{{ $role->id }}" @selected($step->role_id === $role->id)>{{ $role->name }}</option>
+                                            @endforeach
+                                        </select>
                                     @else
-                                        The head of the request's school <span class="text-body-secondary small">(set under Schools)</span>
-                                    @endif
+                                        {{ $step->role?->name ?: 'Not set' }}
+                                    @endcan
+                                    @php($people = $holders->filter(fn ($user) => $user->roles->contains('id', $step->role_id)))
+                                    <div class="small text-body-secondary mt-1">
+                                        Signed by a holder of this role {{ $step->scopeLabel() }}.
+                                        @if ($step->role_id)
+                                            Now: {{ $people->isEmpty() ? 'nobody' : $people->map(fn ($user) => $user->name.($step->isSchoolScoped() ? ' ('.($user->school?->name ?: 'no school').')' : ''))->implode(', ') }}.
+                                        @endif
+                                    </div>
                                 </td>
                                 <td>{{ $step->condition === 'director_rule' ? 'Only when the category or the cost requires it' : 'Every request' }}</td>
                                 <td>
@@ -75,7 +76,7 @@
             </div>
         </div>
         <div class="card-footer text-body-secondary small">
-            A request cannot be submitted while a step it needs has nobody to sign it. Requests already in the chain keep the approvers they started with.
+            A request cannot be submitted while a step it needs has nobody holding its role. Give people the role under Users. Anyone holding the role can sign, and nobody signs their own request.
         </div>
     </div>
 </div>

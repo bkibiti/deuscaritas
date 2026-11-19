@@ -1,7 +1,9 @@
 <?php
 
+use App\Models\SchoolRequest;
 use App\Models\Setting;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 function getRoles()
@@ -37,18 +39,13 @@ function groupName(): string
 }
 
 /**
- * Public URL of the school logo: the bundled one, or the one uploaded under Settings if the
- * bundled file is missing.
+ * Public URL of the school logo, a file bundled with the app.
  */
 function groupLogoUrl(): ?string
 {
-    if (file_exists(public_path('images/dcs-logo.png'))) {
-        return asset('images/dcs-logo.png').'?v='.filemtime(public_path('images/dcs-logo.png'));
-    }
+    $path = public_path('images/dcs-logo.png');
 
-    $logo = getSettings('logo');
-
-    return $logo !== 'NA' && filled($logo) && file_exists(public_path('logo/'.$logo)) ? asset('logo/'.$logo) : null;
+    return file_exists($path) ? asset('images/dcs-logo.png').'?v='.filemtime($path) : null;
 }
 
 /**
@@ -56,21 +53,17 @@ function groupLogoUrl(): ?string
  */
 function groupLogoPath(): ?string
 {
-    if (file_exists(public_path('images/dcs-logo.png'))) {
-        return public_path('images/dcs-logo.png');
-    }
+    $path = public_path('images/dcs-logo.png');
 
-    $logo = getSettings('logo');
-
-    return $logo !== 'NA' && filled($logo) && file_exists(public_path('logo/'.$logo)) ? public_path('logo/'.$logo) : null;
+    return file_exists($path) ? $path : null;
 }
 
 /**
- * Number shown on the bell icon: currently the due/overdue reminders.
+ * Number shown on the bell icon: the requests waiting for the signed-in user's action.
  */
 function notifications()
 {
-    return count(getReminders());
+    return Auth::check() ? SchoolRequest::awaitingActionBy(Auth::user())->count() : 0;
 }
 
 /**
@@ -113,27 +106,4 @@ function formatCompactAmount(float $amount): string
     }
 
     return number_format($amount);
-}
-
-function getReminders()
-{
-    $today = Carbon::today();
-
-    $msg = [];
-    foreach (DB::table('reminders')->where('status', 'On')->get(['name', 'end_date', 'days_to_remind']) as $r) {
-        $days = (int) $today->diffInDays(Carbon::parse($r->end_date), false);
-        if ($days > $r->days_to_remind) {
-            continue;
-        }
-
-        if ($days > 0) {
-            $msg[] = $r->name.' is due in '.$days.' days';
-        } elseif ($days < 0) {
-            $msg[] = $r->name.' is overdue by '.(0 - $days).' days';
-        } else {
-            $msg[] = $r->name.' is due today';
-        }
-    }
-
-    return $msg;
 }

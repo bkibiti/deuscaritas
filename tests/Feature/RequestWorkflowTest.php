@@ -12,6 +12,7 @@ use App\Models\WorkflowStep;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
+use Spatie\Permission\Models\Role;
 use Tests\TestCase;
 
 /**
@@ -22,8 +23,6 @@ class RequestWorkflowTest extends TestCase
     use RefreshDatabase;
 
     private User $requester;
-
-    private User $departmentHead;
 
     private User $schoolHead;
 
@@ -43,19 +42,32 @@ class RequestWorkflowTest extends TestCase
     {
         parent::setUp();
 
-        [$this->departmentHead, $this->schoolHead, $this->coordinator, $this->manager, $this->director] = User::factory()->count(5)->create()->all();
-
-        $this->school = School::create(['name' => 'Primary', 'head_user_id' => $this->schoolHead->id, 'is_active' => true]);
-        $this->department = Department::create(['name' => 'Science', 'school_id' => $this->school->id, 'head_user_id' => $this->departmentHead->id, 'is_active' => true]);
+        $this->school = School::create(['name' => 'Primary', 'is_active' => true]);
+        $this->department = Department::create(['name' => 'Science', 'school_id' => $this->school->id, 'is_active' => true]);
         $this->category = RequestCategory::where('name', 'Maintenance')->first();
 
-        $this->requester = User::factory()->create();
-        $this->requester->department_id = $this->department->id;
-        $this->requester->save();
+        [$this->schoolHead, $this->coordinator, $this->manager, $this->director, $this->requester] = User::factory()->count(5)->create()->all();
 
-        WorkflowStep::where('key', 'coordinator')->update(['user_id' => $this->coordinator->id]);
-        WorkflowStep::where('key', 'manager')->update(['user_id' => $this->manager->id]);
-        WorkflowStep::where('key', 'director')->update(['user_id' => $this->director->id]);
+        $this->give($this->schoolHead, 'Head of School', $this->school);
+        $this->give($this->coordinator, 'School Coordinator');
+        $this->give($this->manager, 'Manager');
+        $this->give($this->director, 'Director');
+        $this->give($this->requester, null, $this->school);
+    }
+
+    /**
+     * Give a user a role and/or a school. The approval chain names roles, so this is all it takes
+     * to make someone an approver.
+     */
+    private function give(User $user, ?string $role, ?School $school = null): void
+    {
+        if ($school) {
+            $user->forceFill(['school_id' => $school->id])->save();
+        }
+
+        if ($role) {
+            $user->assignRole($role);
+        }
     }
 
     /**
@@ -65,13 +77,13 @@ class RequestWorkflowTest extends TestCase
     private function form(array $overrides = []): array
     {
         return $overrides + [
+            'department_id' => $this->department->id,
             'request_category_id' => $this->category->id,
             'title' => 'Classroom projector not working',
             'description' => 'The projector in Class 5B has stopped working.',
             'justification' => 'Examination preparation is tomorrow.',
             'required_date' => '2026-12-01',
             'quantity' => 1,
-            'estimated_cost' => 250000,
             'suggested_priority' => 'urgent',
             'action' => 'submit',
         ];
@@ -104,16 +116,16 @@ class RequestWorkflowTest extends TestCase
         $this->assertCount(0, $request->approvals);
     }
 
-    public function test_submitting_gives_a_number_and_starts_at_the_head_of_department(): void
+    public function test_submitting_gives_a_number_and_starts_at_the_head_of_school(): void
     {
         $request = $this->submitRequest();
 
         $this->assertSame('REQ-'.now('Africa/Dar_es_Salaam')->year.'-000001', $request->number);
         $this->assertSame(SchoolRequest::STATUS_PENDING, $request->status);
-        $this->assertSame('Awaiting Head of Department', $request->statusLabel());
-        $this->assertSame($this->departmentHead->id, $request->currentApproval->approver_id);
+        $this->assertSame('Awaiting Head of School', $request->statusLabel());
+        $this->assertTrue($request->isAwaiting($this->schoolHead));
         $this->assertSame(
-            ['department_head', 'school_head', 'coordinator', 'manager'],
+            ['school_head', 'coordinator', 'manager'],
             $request->approvals->pluck('step_key')->all(),
             'The Director step is left out when neither the category nor the cost needs it.'
         );
@@ -132,7 +144,7 @@ class RequestWorkflowTest extends TestCase
     {
         $request = $this->submitRequest();
 
-        foreach ([$this->departmentHead, $this->schoolHead, $this->coordinator] as $approver) {
+        foreach ([$this->schoolHead, $this->coordinator] as $approver) {
             $this->approveAs($approver, $request);
             $this->assertSame(SchoolRequest::STATUS_PENDING, $request->fresh()->status);
         }
@@ -144,9 +156,9 @@ class RequestWorkflowTest extends TestCase
         $request = $request->fresh();
         $this->assertSame(SchoolRequest::STATUS_APPROVED, $request->status);
         $this->assertNotNull($request->decided_at);
-        $this->assertSame(4, $request->approvals->where('status', RequestApproval::STATUS_APPROVED)->count());
+        $this->assertSame(3, $request->approvals->where('status', RequestApproval::STATUS_APPROVED)->count());
         $this->assertSame(
-            ['submitted', 'approved', 'approved', 'approved', 'approved', 'fully_approved'],
+            ['submitted', 'approved', 'approved', 'approved', 'fully_approved'],
             $request->actions->pluck('action')->all()
         );
     }
@@ -155,10 +167,10 @@ class RequestWorkflowTest extends TestCase
     {
         $request = $this->submitRequest();
 
-        $this->approveAs($this->departmentHead, $request);
+        $this->approveAs($this->schoolHead, $request);
 
-        $approval = $request->approvals()->where('step_key', 'department_head')->first();
-        $this->assertSame($this->departmentHead->id, $approval->acted_by);
+        $approval = $request->approvals()->where('step_key', 'school_head')->first();
+        $this->assertSame($this->schoolHead->id, $approval->acted_by);
         $this->assertNotNull($approval->acted_at);
         $this->assertSame('OK', $approval->comment);
         $this->assertSame($request->fresh()->contentHash(), $approval->content_hash);
@@ -171,9 +183,9 @@ class RequestWorkflowTest extends TestCase
         $request = $this->submitRequest();
 
         $this->assertSame('director', $request->approvals->last()->step_key);
-        $this->assertSame($this->director->id, $request->approvals->last()->approver_id);
+        $this->assertSame(Role::where('name', 'Director')->value('id'), $request->approvals->last()->role_id);
 
-        foreach ([$this->departmentHead, $this->schoolHead, $this->coordinator, $this->manager] as $approver) {
+        foreach ([$this->schoolHead, $this->coordinator, $this->manager] as $approver) {
             $this->approveAs($approver, $request);
         }
         $this->assertSame('Awaiting Director', $request->fresh()->statusLabel());
@@ -182,22 +194,24 @@ class RequestWorkflowTest extends TestCase
         $this->assertSame(SchoolRequest::STATUS_APPROVED, $request->fresh()->status);
     }
 
-    public function test_the_director_signs_when_the_cost_reaches_the_category_threshold(): void
+    public function test_requests_are_not_priced_so_a_cost_threshold_never_sends_them_to_the_director(): void
     {
-        $this->category->update(['director_cost_threshold' => 200000]);
+        $this->category->update(['director_cost_threshold' => 200000, 'requires_director' => false]);
 
-        $this->assertContains('director', $this->submitRequest(['estimated_cost' => 250000])->approvals->pluck('step_key'));
-        $this->assertNotContains('director', $this->submitRequest(['estimated_cost' => 150000])->approvals->pluck('step_key'));
+        $request = $this->submitRequest(['estimated_cost' => 250000]);
+
+        $this->assertNull($request->estimated_cost, 'Requests are for stock items, so no cost is taken.');
+        $this->assertNotContains('director', $request->approvals->pluck('step_key'));
     }
 
     public function test_approving_needs_the_approvers_password(): void
     {
         $request = $this->submitRequest();
 
-        $response = $this->actingAs($this->departmentHead)->post(route('requests.approve', $request), ['password' => 'wrong']);
+        $response = $this->actingAs($this->schoolHead)->post(route('requests.approve', $request), ['password' => 'wrong']);
 
         $response->assertSessionHasErrorsIn('approve', ['password']);
-        $this->assertSame($this->departmentHead->id, $request->fresh()->currentApproval->approver_id);
+        $this->assertTrue($request->fresh()->isAwaiting($this->schoolHead), 'A wrong password leaves the step waiting.');
     }
 
     public function test_only_the_current_approver_can_act(): void
@@ -217,11 +231,11 @@ class RequestWorkflowTest extends TestCase
     {
         $request = $this->submitRequest();
 
-        $this->actingAs($this->departmentHead)
+        $this->actingAs($this->schoolHead)
             ->post(route('requests.reject', $request), ['password' => 'password'])
             ->assertSessionHasErrorsIn('reject', ['comment']);
 
-        $this->actingAs($this->departmentHead)
+        $this->actingAs($this->schoolHead)
             ->post(route('requests.reject', $request), ['password' => 'password', 'comment' => 'Not in the budget.'])
             ->assertSessionHasNoErrors();
 
@@ -236,9 +250,9 @@ class RequestWorkflowTest extends TestCase
     public function test_a_returned_request_is_corrected_and_starts_a_new_round_with_the_same_number(): void
     {
         $request = $this->submitRequest();
-        $this->approveAs($this->departmentHead, $request);
+        $this->approveAs($this->schoolHead, $request);
 
-        $this->actingAs($this->schoolHead)
+        $this->actingAs($this->coordinator)
             ->post(route('requests.return', $request), ['comment' => 'Add a quotation.'])
             ->assertSessionHasNoErrors();
 
@@ -256,7 +270,7 @@ class RequestWorkflowTest extends TestCase
         $this->assertSame(SchoolRequest::STATUS_PENDING, $request->status);
         $this->assertSame('Projector, with quotation', $request->title);
         $this->assertSame(2, $request->approvals->max('round'));
-        $this->assertSame($this->departmentHead->id, $request->currentApproval->approver_id, 'A corrected request starts the chain again.');
+        $this->assertSame('school_head', $request->currentApproval->step_key, 'A corrected request starts the chain again.');
         $this->assertContains('resubmitted', $request->actions->pluck('action'));
     }
 
@@ -271,37 +285,96 @@ class RequestWorkflowTest extends TestCase
 
     public function test_a_step_the_requester_holds_is_skipped(): void
     {
-        $this->departmentHead->department_id = $this->department->id;
-        $this->departmentHead->save();
-
-        $request = $this->submitRequest([], $this->departmentHead);
+        $request = $this->submitRequest([], $this->schoolHead);
 
         $first = $request->approvals->first();
         $this->assertSame(RequestApproval::STATUS_SKIPPED, $first->status);
-        $this->assertSame($this->schoolHead->id, $request->currentApproval->approver_id);
+        $this->assertSame('coordinator', $request->currentApproval->step_key);
     }
 
-    public function test_a_department_for_all_schools_still_goes_to_the_head_of_the_chosen_school(): void
+    public function test_head_office_staff_choose_the_school_and_its_head_signs(): void
     {
-        $ict = Department::create(['name' => 'ICT', 'school_id' => null, 'head_user_id' => $this->departmentHead->id, 'is_active' => true]);
-        $this->requester->department_id = $ict->id;
-        $this->requester->save();
+        $other = School::create(['name' => 'Secondary', 'is_active' => true]);
+        $otherHead = User::factory()->create();
+        $this->give($otherHead, 'Head of School', $other);
 
-        $this->actingAs($this->requester)
-            ->post(route('requests.store'), $this->form())
-            ->assertSessionHasErrors('school_id');
+        $officer = User::factory()->create(); // no school
+        $ict = Department::create(['name' => 'ICT', 'school_id' => null, 'is_active' => true]);
 
-        $request = $this->submitRequest(['school_id' => $this->school->id]);
+        $this->actingAs($officer)->post(route('requests.store'), $this->form(['department_id' => $ict->id]))->assertSessionHasErrors('school_id');
+
+        $request = $this->submitRequest(['department_id' => $ict->id, 'school_id' => $other->id], $officer);
+
+        $this->assertSame($other->id, $request->school_id);
+        $this->assertTrue($request->isAwaiting($otherHead));
+        $this->assertFalse($request->isAwaiting($this->schoolHead));
+    }
+
+    public function test_a_staff_member_raises_requests_for_their_own_school_whatever_the_form_says(): void
+    {
+        $other = School::create(['name' => 'Secondary', 'is_active' => true]);
+
+        $request = $this->submitRequest(['school_id' => $other->id]);
 
         $this->assertSame($this->school->id, $request->school_id);
-        $schoolStep = $request->approvals->firstWhere('step_key', 'school_head');
-        $this->assertNotNull($schoolStep, 'The Head of School step is not skipped for an all-schools department.');
-        $this->assertSame($this->schoolHead->id, $schoolStep->approver_id);
+    }
+
+    public function test_a_school_head_signs_only_for_their_own_school(): void
+    {
+        $other = School::create(['name' => 'Secondary', 'is_active' => true]);
+        $otherHead = User::factory()->create();
+        $this->give($otherHead, 'Head of School', $other);
+
+        $request = $this->submitRequest();
+
+        $this->actingAs($otherHead)->post(route('requests.approve', $request), ['password' => 'password'])->assertForbidden();
+        $this->actingAs($otherHead)->get(route('requests.show', $request))->assertForbidden();
+        $this->assertSame(0, SchoolRequest::awaitingActionBy($otherHead)->count());
+        $this->assertSame(1, SchoolRequest::awaitingActionBy($this->schoolHead)->count());
+    }
+
+    public function test_any_holder_of_a_role_can_sign_and_the_signer_is_recorded(): void
+    {
+        $deputy = User::factory()->create();
+        $this->give($deputy, 'Head of School', $this->school);
+        $secondManager = User::factory()->create();
+        $this->give($secondManager, 'Manager');
+
+        $request = $this->submitRequest();
+
+        $this->approveAs($deputy, $request);
+        $this->approveAs($this->coordinator, $request);
+        $this->approveAs($secondManager, $request);
+
+        $this->assertSame(SchoolRequest::STATUS_APPROVED, $request->fresh()->status);
+        $this->assertSame($deputy->id, $request->approvals()->where('step_key', 'school_head')->first()->acted_by);
+        $this->assertSame($secondManager->id, $request->approvals()->where('step_key', 'manager')->first()->acted_by);
+    }
+
+    public function test_a_user_who_loses_the_role_can_no_longer_sign(): void
+    {
+        $request = $this->submitRequest();
+
+        $this->schoolHead->removeRole('Head of School');
+
+        $this->actingAs($this->schoolHead)->post(route('requests.approve', $request), ['password' => 'password'])->assertForbidden();
+    }
+
+    public function test_a_request_stays_a_draft_when_no_one_holds_the_school_heads_role_at_its_school(): void
+    {
+        $this->schoolHead->removeRole('Head of School');
+
+        $response = $this->actingAs($this->requester)->post(route('requests.store'), $this->form());
+
+        $request = SchoolRequest::first();
+        $response->assertSessionHasErrors('approvers');
+        $this->assertStringContainsString('Head of School role at Primary', session('errors')->first('approvers'));
+        $this->assertSame(SchoolRequest::STATUS_DRAFT, $request->status);
     }
 
     public function test_a_request_stays_a_draft_when_a_step_has_nobody_to_sign_it(): void
     {
-        WorkflowStep::where('key', 'manager')->update(['user_id' => null]);
+        WorkflowStep::where('key', 'manager')->update(['role_id' => null]);
 
         $response = $this->actingAs($this->requester)->post(route('requests.store'), $this->form());
 
@@ -319,15 +392,12 @@ class RequestWorkflowTest extends TestCase
     {
         WorkflowStep::where('key', 'coordinator')->update(['is_active' => false]);
 
-        $this->assertSame(['department_head', 'school_head', 'manager'], $this->submitRequest()->approvals->pluck('step_key')->all());
+        $this->assertSame(['school_head', 'manager'], $this->submitRequest()->approvals->pluck('step_key')->all());
     }
 
-    public function test_a_user_without_a_department_cannot_raise_a_request(): void
+    public function test_a_request_needs_a_department(): void
     {
-        $nobody = User::factory()->create();
-
-        $this->actingAs($nobody)->get(route('requests.create'))->assertOk()->assertSee('not linked to a department');
-        $this->actingAs($nobody)->post(route('requests.store'), $this->form())->assertSessionHasErrors('department');
+        $this->actingAs($this->requester)->post(route('requests.store'), $this->form(['department_id' => '']))->assertSessionHasErrors('department_id');
         $this->assertSame(0, SchoolRequest::count());
     }
 
@@ -339,7 +409,7 @@ class RequestWorkflowTest extends TestCase
         $viewer->givePermissionTo('View All Requests');
 
         $this->actingAs($this->requester)->get(route('requests.show', $request))->assertOk();
-        $this->actingAs($this->departmentHead)->get(route('requests.show', $request))->assertOk()->assertSee('Approve and sign');
+        $this->actingAs($this->schoolHead)->get(route('requests.show', $request))->assertOk()->assertSee('Approve and sign');
         $this->actingAs($viewer)->get(route('requests.show', $request))->assertOk()->assertDontSee('Approve and sign');
         $this->actingAs($outsider)->get(route('requests.show', $request))->assertForbidden();
         // The Manager's step has not been reached yet.
@@ -352,8 +422,8 @@ class RequestWorkflowTest extends TestCase
         $this->submitRequest(['action' => 'draft', 'title' => 'Still a draft']);
 
         $this->actingAs($this->requester)->get(route('requests.index'))->assertOk()->assertSee($request->number)->assertSee('Still a draft');
-        $this->actingAs($this->departmentHead)->get(route('requests.index', ['scope' => 'inbox']))->assertOk()->assertSee($request->number);
-        $this->actingAs($this->schoolHead)->get(route('requests.index', ['scope' => 'inbox']))->assertOk()->assertDontSee($request->number);
+        $this->actingAs($this->schoolHead)->get(route('requests.index', ['scope' => 'inbox']))->assertOk()->assertSee($request->number);
+        $this->actingAs($this->coordinator)->get(route('requests.index', ['scope' => 'inbox']))->assertOk()->assertDontSee($request->number);
         $this->actingAs($this->schoolHead)->get(route('requests.index', ['scope' => 'all']))->assertForbidden();
 
         $viewer = User::factory()->create();
@@ -365,11 +435,11 @@ class RequestWorkflowTest extends TestCase
     {
         $request = $this->submitRequest();
 
-        $this->actingAs($this->departmentHead)->post(route('requests.cancel', $request))->assertForbidden();
+        $this->actingAs($this->schoolHead)->post(route('requests.cancel', $request))->assertForbidden();
         $this->actingAs($this->requester)->post(route('requests.cancel', $request))->assertSessionHasNoErrors();
         $this->assertSame(SchoolRequest::STATUS_CANCELLED, $request->fresh()->status);
 
-        $this->actingAs($this->departmentHead)->post(route('requests.approve', $request), ['password' => 'password'])->assertForbidden();
+        $this->actingAs($this->schoolHead)->post(route('requests.approve', $request), ['password' => 'password'])->assertForbidden();
     }
 
     public function test_an_approved_request_is_assigned_then_completed_with_evidence(): void
@@ -377,7 +447,7 @@ class RequestWorkflowTest extends TestCase
         Storage::fake('local');
 
         $request = $this->submitRequest();
-        foreach ([$this->departmentHead, $this->schoolHead, $this->coordinator, $this->manager] as $approver) {
+        foreach ([$this->schoolHead, $this->coordinator, $this->manager] as $approver) {
             $this->approveAs($approver, $request);
         }
 
@@ -424,7 +494,7 @@ class RequestWorkflowTest extends TestCase
         Storage::disk('local')->assertExists($attachment->path);
 
         $url = route('requests.attachments.download', [$request, $attachment]);
-        $this->actingAs($this->departmentHead)->get($url)->assertOk();
+        $this->actingAs($this->schoolHead)->get($url)->assertOk();
         $this->actingAs(User::factory()->create())->get($url)->assertForbidden();
     }
 
@@ -451,7 +521,7 @@ class RequestWorkflowTest extends TestCase
         $attachment = $request->attachments->first();
         $url = route('requests.attachments.destroy', [$request, $attachment]);
 
-        $this->actingAs($this->departmentHead)->delete($url)->assertForbidden();
+        $this->actingAs($this->schoolHead)->delete($url)->assertForbidden();
         $this->actingAs($this->requester)->delete($url)->assertSessionHasNoErrors();
 
         $this->assertSame(0, $request->attachments()->count());
@@ -462,7 +532,7 @@ class RequestWorkflowTest extends TestCase
     {
         $this->submitRequest();
 
-        $response = $this->actingAs($this->departmentHead)->get(route('home'));
+        $response = $this->actingAs($this->schoolHead)->get(route('home'));
 
         $response->assertOk();
         $this->assertSame(1, collect($response->viewData('mine'))->firstWhere('label', 'Awaiting my action')['value']);

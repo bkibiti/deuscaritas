@@ -21,7 +21,6 @@ class StaffAreaAuthorizationTest extends TestCase
             'masters: schools' => ['schools.index'],
             'masters: departments' => ['departments.index'],
             'masters: request categories' => ['request-categories.index'],
-            'masters: reminders' => ['reminders.index'],
             'users' => ['users.index'],
             'roles' => ['roles.index'],
             'settings' => ['configurations.index'],

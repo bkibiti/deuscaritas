@@ -10,24 +10,6 @@
             </div>
             <div class="modal-body">
                 <div class="row g-3">
-                    <div class="col-md-6">
-                        <label class="form-label">Store <span class="text-danger">*</span></label>
-                        <select name="store_id" class="form-select item-store" required>
-                            <option value="">Choose a store</option>
-                            @foreach ($stores as $store)
-                                <option value="{{ $store->id }}" @selected((string) old('store_id') === (string) $store->id)>{{ $store->name }}{{ $store->is_active ? '' : ' (inactive)' }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-6">
-                        <label class="form-label">Category</label>
-                        <select name="item_category_id" class="form-select item-category">
-                            <option value="">None</option>
-                            @foreach ($categories as $category)
-                                <option value="{{ $category->id }}" data-store="{{ $category->store_id }}" @selected((string) old('item_category_id') === (string) $category->id)>{{ $category->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
                     <div class="col-md-8">
                         <label class="form-label">Name <span class="text-danger">*</span></label>
                         <input type="text" name="name" class="form-control item-name" maxlength="150" required value="{{ old('name') }}">
@@ -35,6 +17,15 @@
                     <div class="col-md-4">
                         <label class="form-label">Code</label>
                         <input type="text" name="code" class="form-control item-code" maxlength="30" value="{{ old('code') }}">
+                    </div>
+                    <div class="col-md-6">
+                        <label class="form-label">Category</label>
+                        <select name="item_category_id" class="form-select item-category">
+                            <option value="">None</option>
+                            @foreach ($categories as $category)
+                                <option value="{{ $category->id }}" @selected((string) old('item_category_id') === (string) $category->id)>{{ $category->name }}</option>
+                            @endforeach
+                        </select>
                     </div>
                     <div class="col-md-6">
                         <label class="form-label">Unit <span class="text-danger">*</span></label>
@@ -69,24 +60,6 @@
 @push('page_scripts')
     <script>
         $(function () {
-            // Only the chosen store's categories can be picked.
-            function showCategoriesOfStore() {
-                var storeId = String($('.item-store').val() || '');
-                var $category = $('.item-category');
-
-                $category.find('option[data-store]').each(function () {
-                    var match = String($(this).data('store')) === storeId;
-                    $(this).prop('hidden', ! match).prop('disabled', ! match);
-                });
-
-                if ($category.find('option:selected').prop('disabled')) {
-                    $category.val('');
-                }
-            }
-
-            $('.item-store').on('change', showCategoriesOfStore);
-            showCategoriesOfStore();
-
             $('#inv-item-modal').on('show.bs.modal', function (event) {
                 var b = event.relatedTarget ? $(event.relatedTarget) : null;
                 var $modal = $(this);
@@ -100,8 +73,7 @@
                 $form.find('[name=_action]').val(b.data('action'));
                 $form.find('[name=_method]').val(b.data('method'));
                 $modal.find('.modal-title').text(b.data('title'));
-                $form.find('.item-store').val(b.data('store') ?? '{{ $storeId }}').trigger('change');
-                $form.find('.item-category').val(b.data('category') ?? '');
+                $form.find('.item-category').val(b.data('category') ?? '{{ $categoryId }}');
                 $form.find('.item-name').val(b.data('name') ?? '');
                 $form.find('.item-code').val(b.data('code') ?? '');
                 $form.find('.item-unit').val(b.data('unit') ?? '');

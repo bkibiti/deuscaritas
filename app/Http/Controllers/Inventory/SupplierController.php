@@ -38,6 +38,12 @@ class SupplierController extends Controller
 
     public function destroy(Supplier $supplier): RedirectResponse
     {
+        if ($supplier->isInUse()) {
+            session()->flash('alert-danger', 'This supplier has deliveries recorded and cannot be deleted. Deactivate it instead.');
+
+            return back();
+        }
+
         $supplier->delete();
 
         session()->flash('alert-success', 'Supplier deleted.');

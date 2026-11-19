@@ -43,10 +43,10 @@
                 <dd class="col-sm-8" style="white-space: pre-line">{{ $schoolRequest->justification ?: '—' }}</dd>
                 <dt class="col-sm-4">Required by</dt>
                 <dd class="col-sm-8">{{ $schoolRequest->required_date?->format('j M Y') ?: '—' }}</dd>
-                <dt class="col-sm-4">Quantity</dt>
-                <dd class="col-sm-8">{{ $schoolRequest->quantity === null ? '—' : rtrim(rtrim(number_format((float) $schoolRequest->quantity, 2), '0'), '.') }}</dd>
-                <dt class="col-sm-4">Estimated cost</dt>
-                <dd class="col-sm-8">{{ $schoolRequest->estimated_cost === null ? '—' : 'TZS '.formatAmount($schoolRequest->estimated_cost) }}</dd>
+                @if ($schoolRequest->estimated_cost !== null)
+                    <dt class="col-sm-4">Estimated cost</dt>
+                    <dd class="col-sm-8">TZS {{ formatAmount($schoolRequest->estimated_cost) }}</dd>
+                @endif
                 <dt class="col-sm-4">Suggested priority</dt>
                 <dd class="col-sm-8">{{ \App\Models\SchoolRequest::PRIORITY_LABELS[$schoolRequest->suggested_priority] ?? '—' }}</dd>
                 <dt class="col-sm-4">Submitted</dt>
@@ -61,6 +61,31 @@
                 @endif
             </dl>
         </div>
+        @if ($schoolRequest->items->isNotEmpty())
+            <div class="table-responsive border-top">
+                <table class="table mb-0">
+                    <thead>
+                        <tr>
+                            <th>SN</th>
+                            <th>Particular</th>
+                            <th class="text-end">Qty</th>
+                            <th>Unit</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach ($schoolRequest->items as $line)
+                            <tr>
+                                <td>{{ str_pad($loop->iteration, 2, '0', STR_PAD_LEFT) }}</td>
+                                <td>{{ $line->item?->name }}</td>
+                                <td class="text-end">{{ rtrim(rtrim(number_format((float) $line->quantity, 3), '0'), '.') }}</td>
+                                <td>{{ $line->item?->unit?->abbreviation }}</td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            </div>
+        @endif
+
         @if ($schoolRequest->attachments->isNotEmpty())
             <ul class="list-group list-group-flush">
                 @foreach ($schoolRequest->attachments as $attachment)
@@ -86,7 +111,7 @@
                         <thead>
                             <tr>
                                 <th>Step</th>
-                                <th>Name</th>
+                                <th>Signed by</th>
                                 <th>Decision</th>
                                 <th>Date and time</th>
                                 <th>Comment</th>
@@ -99,7 +124,7 @@
                                 @endif
                                 <tr>
                                     <td>{{ $approval->step_name }}</td>
-                                    <td>{{ $approval->approver?->name ?: '—' }}</td>
+                                    <td>{{ $approval->actedBy?->name ?: ($approval->role?->name ?: '—') }}</td>
                                     <td>
                                         @if ($approval->status === 'waiting' && $schoolRequest->status !== 'pending')
                                             <span class="badge text-bg-secondary">Not reached</span>

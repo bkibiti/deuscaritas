@@ -93,15 +93,13 @@
                             @endif
                         </a>
                         <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end">
-                            <span class="dropdown-item dropdown-header">{{ notifications() }} Notifications</span>
-                            @can('View Reminders')
-                                @foreach (getReminders() as $reminder)
-                                    <div class="dropdown-divider"></div>
-                                    <a href="{{ route('reminders.index') }}" class="dropdown-item notification-item">
-                                        <i class="bi bi-alarm text-warning me-2"></i> {{ $reminder }}
-                                    </a>
-                                @endforeach
-                            @endcan
+                            <span class="dropdown-item dropdown-header">{{ notifications() }} {{ notifications() === 1 ? 'Notification' : 'Notifications' }}</span>
+                            @if (notifications() > 0)
+                                <div class="dropdown-divider"></div>
+                                <a href="{{ route('requests.index', ['scope' => 'inbox']) }}" class="dropdown-item notification-item">
+                                    <i class="bi bi-file-earmark-text text-warning me-2"></i> {{ notifications() }} {{ notifications() === 1 ? 'request is' : 'requests are' }} waiting for your action
+                                </a>
+                            @endif
                         </div>
                     </li>
 

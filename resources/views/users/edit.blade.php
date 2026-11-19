@@ -70,12 +70,12 @@
                         </div>
 
                         <div class="row mb-3">
-                                <label for="department_id1" class="col-md-4 col-form-label text-md-end">{{ __('Department') }}</label>
+                                <label for="school_id1" class="col-md-4 col-form-label text-md-end">{{ __('School') }}</label>
                                 <div class="col-md-8">
-                                    <select class="form-select" id="department_id1" name="department_id1">
-                                        <option value="">Not set</option>
-                                        @foreach($departments as $department)
-                                            <option value="{{$department->id}}" {{ ((string) $department->id === (string) old('department_id1') ? "selected":"") }}>{{$department->name}} ({{ $department->school?->name ?: 'All schools' }})</option>
+                                    <select class="form-select" id="school_id1" name="school_id1">
+                                        <option value="">All schools</option>
+                                        @foreach($schools as $school)
+                                            <option value="{{$school->id}}" {{ ((string) $school->id === (string) old('school_id1') ? "selected":"") }}>{{$school->name}}</option>
                                         @endforeach
                                     </select>
                                 </div>
@@ -84,9 +84,9 @@
                         <div class="row mb-3">
                                 <label for="role1" class="col-md-4 col-form-label text-md-end">{{ __('User Role') }} <font color="red">*</font></label>
                                 <div class="col-md-8">
-                                        <select class="form-select select2"  class="form-select" id="role1" name="role1[]"  data-placeholder="Select Role" required data-width="100%">
+                                        <select class="form-select select2"  class="form-select" id="role1" name="role1[]" multiple data-placeholder="Select one or more roles" required data-width="100%">
                                             @foreach(getRoles() as $role)
-                                                <option value="{{$role->id}}" {{ ($role->id == old('role1') ? "selected":"") }}>{{$role->name}}</option>
+                                                <option value="{{$role->id}}" {{ (in_array($role->id, (array) old('role1', [])) ? "selected":"") }}>{{$role->name}}</option>
                                             @endforeach
                                         </select>
                                 <span class="text-danger">

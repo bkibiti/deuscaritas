@@ -25,7 +25,7 @@ class RequestWorkflow
             throw ValidationException::withMessages(['status' => 'Only a draft or a returned request can be submitted, by the person who raised it.']);
         }
 
-        $request->loadMissing(['department', 'school', 'category']);
+        $request->loadMissing(['department', 'school', 'category', 'requester.roles']);
 
         if ($request->school_id === null) {
             throw ValidationException::withMessages(['school_id' => 'Choose the school this request is for.']);
@@ -44,12 +44,13 @@ class RequestWorkflow
             $now = now();
             $pendingSet = false;
 
-            foreach ($steps as [$step, $approverId]) {
+            foreach ($steps as [$step, $schoolId]) {
                 $status = RequestApproval::STATUS_WAITING;
                 $comment = null;
 
-                if ($approverId === $request->requester_id) {
+                if ($request->requester->holdsRole($step->role_id, $schoolId)) {
                     // Nobody signs their own request: the step is passed and recorded as such.
+                    // (Another holder of the role is not asked: the requester already holds it.)
                     $status = RequestApproval::STATUS_SKIPPED;
                     $comment = 'The requester holds this step.';
                 } elseif (! $pendingSet) {
@@ -63,7 +64,8 @@ class RequestWorkflow
                     'position' => $step->position,
                     'step_key' => $step->key,
                     'step_name' => $step->name,
-                    'approver_id' => $approverId,
+                    'role_id' => $step->role_id,
+                    'scope_school_id' => $schoolId,
                     'status' => $status,
                     'activated_at' => $status === RequestApproval::STATUS_PENDING ? $now : null,
                     'acted_at' => $status === RequestApproval::STATUS_SKIPPED ? $now : null,
@@ -227,10 +229,10 @@ class RequestWorkflow
     }
 
     /**
-     * The chain for this request: each step that applies, with the user who signs it.
-     * Refuses to start when a step has nobody to sign it.
+     * The chain for this request: each step that applies, with the school its signer must
+     * belong to (null for any). Refuses to start when nobody holds a step's role.
      *
-     * @return array<int, array{0: WorkflowStep, 1: int}>
+     * @return array<int, array{0: WorkflowStep, 1: int|null}>
      */
     private function stepsFor(SchoolRequest $request): array
     {
@@ -242,20 +244,27 @@ class RequestWorkflow
                 continue;
             }
 
-            $approverId = $step->approverIdFor($request);
+            $schoolId = $step->schoolFor($request);
 
-            if ($approverId === null) {
-                $missing[] = $step->name;
+            // Someone must be able to sign: a holder of the role, or the requester (who then
+            // passes the step).
+            $covered = $step->role_id !== null
+                && ($request->requester->holdsRole($step->role_id, $schoolId) || $step->holdersFor($request)->exists());
+
+            if (! $covered) {
+                $missing[] = $step->role_id === null
+                    ? "a role for {$step->name}"
+                    : "a holder of the {$step->role->name} role".($schoolId !== null ? " at {$request->school->name}" : '');
 
                 continue;
             }
 
-            $steps[] = [$step, (int) $approverId];
+            $steps[] = [$step, $schoolId];
         }
 
         if ($missing !== []) {
             throw ValidationException::withMessages([
-                'approvers' => 'This request cannot be submitted yet: nobody is set as '.implode(', ', $missing).'. Ask the system administrator to set it.',
+                'approvers' => 'This request cannot be submitted yet: there is no '.implode(', no ', $missing).'. Ask the system administrator to set it up.',
             ]);
         }
 
@@ -269,7 +278,7 @@ class RequestWorkflow
             ->lockForUpdate()
             ->first();
 
-        if ($request->status !== SchoolRequest::STATUS_PENDING || ! $approval || $approval->approver_id !== $actor->id) {
+        if ($request->status !== SchoolRequest::STATUS_PENDING || ! $approval || ! $approval->isActionableBy($actor)) {
             throw ValidationException::withMessages(['status' => 'This request is not waiting for your action.']);
         }
 

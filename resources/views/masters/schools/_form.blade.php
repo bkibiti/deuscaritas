@@ -18,16 +18,7 @@
                         <label class="form-label">Code</label>
                         <input type="text" name="code" class="form-control school-code" maxlength="20" value="{{ old('code') }}">
                     </div>
-                    <div class="col-md-8">
-                        <label class="form-label">Head of School</label>
-                        <select name="head_user_id" class="form-select school-head">
-                            <option value="">Not set</option>
-                            @foreach ($users as $user)
-                                <option value="{{ $user->id }}" @selected((string) old('head_user_id') === (string) $user->id)>{{ $user->name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div class="col-md-4 d-flex align-items-end">
+                    <div class="col-md-12">
                         <div class="form-check form-switch">
                             <input type="checkbox" name="is_active" value="1" class="form-check-input school-active" id="school-active" @checked(old('is_active', true))>
                             <label class="form-check-label" for="school-active">Active</label>
@@ -61,7 +52,6 @@
                 $modal.find('.modal-title').text(b.data('title'));
                 $form.find('.school-name').val(b.data('name') ?? '');
                 $form.find('.school-code').val(b.data('code') ?? '');
-                $form.find('.school-head').val(b.data('head') ?? '');
                 $form.find('.school-active').prop('checked', b.data('active') === undefined ? true : (b.data('active') === 1 || b.data('active') === '1'));
             });
         });

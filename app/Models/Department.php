@@ -7,19 +7,18 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * A department that raises requests. Its head is the Head of Department step of the approval
- * chain. A department with no school serves every school (e.g. ICT, Finance).
+ * A department a request is raised for. A department with no school serves every school
+ * (e.g. ICT, Finance).
  */
 class Department extends Model
 {
     protected $table = 'departments';
 
-    protected $fillable = ['school_id', 'name', 'head_user_id', 'is_active'];
+    protected $fillable = ['school_id', 'name', 'is_active'];
 
     protected function casts(): array
     {
         return [
-            'head_user_id' => 'integer',
             'is_active' => 'boolean',
         ];
     }
@@ -27,11 +26,6 @@ class Department extends Model
     public function school(): BelongsTo
     {
         return $this->belongsTo(School::class);
-    }
-
-    public function head(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'head_user_id');
     }
 
     public function requests(): HasMany

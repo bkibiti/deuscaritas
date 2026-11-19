@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Department;
+use App\Models\Inventory\Item;
+use App\Models\Inventory\StockBalance;
 use App\Models\RequestAttachment;
 use App\Models\RequestCategory;
 use App\Models\School;
@@ -29,7 +32,7 @@ class RequestController extends Controller
 
         $request->validate(['status' => ['nullable', Rule::in(array_keys(SchoolRequest::STATUS_LABELS))]]);
 
-        $query = SchoolRequest::with(['requester', 'department', 'category', 'currentApproval.approver'])->latest('id');
+        $query = SchoolRequest::with(['requester', 'department', 'category', 'currentApproval'])->latest('id');
 
         match ($scope) {
             'inbox' => $query->awaitingActionBy($user),
@@ -50,30 +53,24 @@ class RequestController extends Controller
 
     public function create(Request $request): View
     {
-        $user = $request->user()->load('department.school');
-
         return view('requests.create', [
-            'department' => $user->department,
+            'ownSchool' => $request->user()->school,
             'schoolRequest' => new SchoolRequest,
         ] + $this->formOptions());
     }
 
     public function store(Request $request, RequestWorkflow $workflow): RedirectResponse
     {
-        $user = $request->user()->load('department');
+        $user = $request->user();
 
-        if (! $user->department) {
-            throw ValidationException::withMessages(['department' => 'You are not linked to a department yet, so you cannot raise a request.']);
-        }
-
-        $data = $this->validated($request, $user);
+        [$data, $lines] = $this->validated($request, $user);
 
         $schoolRequest = new SchoolRequest($data);
         $schoolRequest->requester_id = $user->id;
-        $schoolRequest->department_id = $user->department->id;
         $schoolRequest->status = SchoolRequest::STATUS_DRAFT;
         $schoolRequest->save();
 
+        $this->saveLines($schoolRequest, $lines);
         $this->storeAttachments($request, $schoolRequest, $user);
 
         return $this->afterSave($request, $schoolRequest, $workflow);
@@ -86,8 +83,8 @@ class RequestController extends Controller
         abort_unless($schoolRequest->canBeViewedBy($user), 403);
 
         $schoolRequest->load([
-            'requester', 'department', 'school', 'category', 'assignee', 'attachments.uploader',
-            'approvals.approver', 'currentApproval', 'actions.user',
+            'requester', 'department', 'school', 'category', 'assignee', 'attachments.uploader', 'items.item.unit',
+            'approvals.actedBy', 'approvals.role', 'currentApproval', 'actions.user',
         ]);
 
         return view('requests.show', [
@@ -103,12 +100,12 @@ class RequestController extends Controller
     {
         abort_unless($schoolRequest->canBeEditedBy($request->user()), 403);
 
-        $schoolRequest->load(['department.school', 'attachments']);
+        $schoolRequest->load(['attachments', 'items']);
 
         return view('requests.edit', [
-            'department' => $schoolRequest->department,
+            'ownSchool' => $request->user()->school,
             'schoolRequest' => $schoolRequest,
-        ] + $this->formOptions());
+        ] + $this->formOptions($schoolRequest));
     }
 
     public function update(Request $request, SchoolRequest $schoolRequest, RequestWorkflow $workflow): RedirectResponse
@@ -117,9 +114,12 @@ class RequestController extends Controller
 
         abort_unless($schoolRequest->canBeEditedBy($user), 403);
 
-        $schoolRequest->load('department');
-        $schoolRequest->fill($this->validated($request, $user, $schoolRequest));
+        [$data, $lines] = $this->validated($request, $user, $schoolRequest);
+
+        $schoolRequest->fill($data);
         $schoolRequest->save();
+
+        $this->saveLines($schoolRequest, $lines);
 
         $this->storeAttachments($request, $schoolRequest, $user);
 
@@ -140,8 +140,8 @@ class RequestController extends Controller
     }
 
     /**
-     * Save as a draft, or save and submit. A request that cannot be submitted yet (say, no
-     * Head of Department is set) stays saved as a draft and the reason is shown.
+     * Save as a draft, or save and submit. A request that cannot be submitted yet (say, nobody holds a
+     * role the chain needs) stays saved as a draft and the reason is shown.
      */
     private function afterSave(Request $request, SchoolRequest $schoolRequest, RequestWorkflow $workflow): RedirectResponse
     {
@@ -163,18 +163,17 @@ class RequestController extends Controller
     }
 
     /**
-     * @return array<string, mixed>
+     * @return array{0: array<string, mixed>, 1: array<int, array<string, mixed>>} the request's own fields, then its item lines
      */
     private function validated(Request $request, User $user, ?SchoolRequest $schoolRequest = null): array
     {
-        $department = $schoolRequest?->department ?? $user->department;
-
         $data = $request->validate([
             'request_category_id' => ['required', 'integer', Rule::exists('request_categories', 'id')->where('is_active', true)],
-            // A department that serves every school has no school of its own, so the requester
-            // says which school the request is for. That school's head signs it.
+            'department_id' => ['required', 'integer', Rule::exists('departments', 'id')->where('is_active', true)],
+            // Staff raise requests for their own school. Head-office staff have none, so they
+            // say which school the request is for. That school's head signs it.
             'school_id' => [
-                Rule::requiredIf($department->school_id === null),
+                Rule::requiredIf($user->school_id === null),
                 'nullable', 'integer',
                 Rule::exists('schools', 'id')->where('is_active', true),
             ],
@@ -182,22 +181,70 @@ class RequestController extends Controller
             'description' => 'required|string|max:5000',
             'justification' => 'nullable|string|max:5000',
             'required_date' => 'nullable|date_format:Y-m-d',
-            'quantity' => 'nullable|numeric|min:0',
-            'estimated_cost' => 'nullable|numeric|min:0',
             'suggested_priority' => ['nullable', Rule::in(array_keys(SchoolRequest::PRIORITY_LABELS))],
+            // Item lines, as on the paper form. Each is an existing, active inventory item.
+            'items' => 'nullable|array|max:50',
+            'items.*.item_id' => ['required', 'integer', 'distinct', Rule::exists('inv_items', 'id')->where('is_active', true), $this->inStock($schoolRequest)],
+            'items.*.quantity' => 'required|numeric|gt:0',
             'attachments' => 'nullable|array|max:10',
             'attachments.*' => RequestAttachment::FILE_RULE,
         ], [
+            'department_id.required' => 'Choose the department this request is for.',
             'school_id.required' => 'Choose the school this request is for.',
+            'items.*.item_id.required' => 'Choose an item on every line, or remove the empty line.',
+            'items.*.item_id.exists' => 'Choose items from the list only.',
+            'items.*.item_id.in_stock' => 'An item you chose is not in stock. Choose items from the list only.',
+            'items.*.item_id.distinct' => 'The same item is on more than one line. Put it on one line with the full quantity.',
+            'items.*.quantity.required' => 'Enter a quantity for every item.',
+            'items.*.quantity.gt' => 'Each quantity must be more than zero.',
             'attachments.*.max' => 'Each attachment must be 5 MB or smaller.',
             'attachments.*.mimes' => 'Attachments must be PDF, image, Word or Excel files.',
         ]);
 
         unset($data['attachments']);
 
-        $data['school_id'] = $department->school_id ?? ($data['school_id'] ?? null);
+        $data['school_id'] = $user->school_id ?? ($data['school_id'] ?? null);
 
-        return $data;
+        $lines = $this->lines($data['items'] ?? []);
+        unset($data['items'], $data['quantity']);
+
+        return [$data, $lines];
+    }
+
+    /**
+     * Item lines ready to save: the item and the quantity wanted. Items come from the store, so they carry no price.
+     *
+     * @param  array<int, array<string, mixed>>  $items
+     * @return array<int, array<string, mixed>>
+     */
+    private function lines(array $items): array
+    {
+        $lines = [];
+
+        foreach (array_values($items) as $index => $item) {
+            $quantity = (float) $item['quantity'];
+
+            $lines[] = [
+                'item_id' => (int) $item['item_id'],
+                'position' => $index + 1,
+                'quantity' => $quantity,
+                'unit_price' => null,
+                'amount' => null,
+            ];
+        }
+
+        return $lines;
+    }
+
+    /**
+     * Replace the request's lines with the ones just submitted.
+     *
+     * @param  array<int, array<string, mixed>>  $lines
+     */
+    private function saveLines(SchoolRequest $schoolRequest, array $lines): void
+    {
+        $schoolRequest->items()->delete();
+        $schoolRequest->items()->createMany($lines);
     }
 
     private function storeAttachments(Request $request, SchoolRequest $schoolRequest, User $user): void
@@ -216,13 +263,47 @@ class RequestController extends Controller
     }
 
     /**
+     * An item can be requested only while the stores hold some of it. Items already on the
+     * request being edited stay allowed, so an old request can still be saved.
+     */
+    private function inStock(?SchoolRequest $schoolRequest): \Closure
+    {
+        $kept = $schoolRequest?->exists ? $schoolRequest->items()->pluck('item_id')->all() : [];
+
+        return function (string $attribute, mixed $value, \Closure $fail) use ($kept): void {
+            if (in_array((int) $value, $kept, true)) {
+                return;
+            }
+
+            if ((float) StockBalance::where('item_id', (int) $value)->sum('quantity') <= 0) {
+                $fail('An item you chose is not in stock. Choose items from the list only.');
+            }
+        };
+    }
+
+    /**
      * @return array<string, mixed>
      */
-    private function formOptions(): array
+    private function formOptions(?SchoolRequest $schoolRequest = null): array
     {
+        $kept = $schoolRequest?->exists ? $schoolRequest->items()->pluck('item_id')->all() : [];
+
         return [
             'categories' => RequestCategory::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'schools' => School::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'departments' => Department::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            // The items a line can be, grouped by stock category in the form.
+            // Only items the stores hold now, with the quantity available across all stores.
+            'itemGroups' => Item::with(['unit', 'category'])
+                ->withSum('balances as available', 'quantity')
+                ->where('is_active', true)
+                ->where(fn ($query) => $query
+                    ->whereIn('id', $kept)
+                    ->orWhereHas('balances', fn ($balances) => $balances->where('quantity', '>', 0)))
+                ->orderBy('name')
+                ->get()
+                ->groupBy(fn (Item $item) => $item->category?->name ?? 'Other items')
+                ->sortKeys(),
         ];
     }
 }

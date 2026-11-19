@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\School;
-use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -13,10 +12,9 @@ class SchoolController extends Controller
 {
     public function index(): View
     {
-        $schools = School::with('head')->withCount('departments')->orderBy('name')->get();
-        $users = User::where('status', 1)->orderBy('name')->get(['id', 'name']);
+        $schools = School::withCount(['departments', 'users'])->orderBy('name')->get();
 
-        return view('masters.schools.index', compact('schools', 'users'));
+        return view('masters.schools.index', compact('schools'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -60,7 +58,6 @@ class SchoolController extends Controller
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100', Rule::unique('schools', 'name')->ignore($school?->id)],
             'code' => ['nullable', 'string', 'max:20', Rule::unique('schools', 'code')->ignore($school?->id)],
-            'head_user_id' => 'nullable|integer|exists:users,id',
         ]);
 
         $data['is_active'] = $request->boolean('is_active');

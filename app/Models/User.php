@@ -38,10 +38,22 @@ class User extends Authenticatable
     }
 
     /**
-     * The department this user raises requests for.
+     * The school this user works at. Head-office staff (Manager, Director, Finance) have none.
      */
-    public function department(): BelongsTo
+    public function school(): BelongsTo
     {
-        return $this->belongsTo(Department::class);
+        return $this->belongsTo(School::class);
+    }
+
+    /**
+     * Whether the user holds the role and, when a school is given, belongs to that school.
+     */
+    public function holdsRole(?int $roleId, ?int $schoolId = null): bool
+    {
+        if ($roleId === null || ($schoolId !== null && $this->school_id !== $schoolId)) {
+            return false;
+        }
+
+        return $this->roles->contains('id', $roleId);
     }
 }

@@ -5,7 +5,6 @@ namespace App\Http\Controllers\Inventory;
 use App\Http\Controllers\Controller;
 use App\Models\Inventory\Item;
 use App\Models\Inventory\ItemCategory;
-use App\Models\Inventory\Store;
 use App\Models\Inventory\Unit;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -16,21 +15,19 @@ class ItemController extends Controller
 {
     public function index(Request $request): View
     {
-        $request->validate(['store' => 'nullable|integer']);
+        $request->validate(['category' => 'nullable|integer']);
 
-        $stores = Store::orderBy('name')->get(['id', 'name', 'is_active']);
-        $storeId = $request->query('store');
+        $categoryId = $request->query('category');
 
-        $items = Item::with(['store', 'category', 'unit'])
-            ->when($storeId, fn ($query) => $query->where('store_id', $storeId))
+        $items = Item::with(['category', 'unit'])
+            ->when($categoryId, fn ($query) => $query->where('item_category_id', $categoryId))
             ->orderBy('name')
             ->get();
 
         return view('inventory.items.index', [
             'items' => $items,
-            'stores' => $stores,
-            'storeId' => $storeId,
-            'categories' => ItemCategory::orderBy('name')->get(['id', 'store_id', 'name']),
+            'categoryId' => $categoryId,
+            'categories' => ItemCategory::orderBy('name')->get(['id', 'name']),
             'units' => Unit::orderBy('name')->get(['id', 'name', 'abbreviation']),
         ]);
     }
@@ -55,6 +52,12 @@ class ItemController extends Controller
 
     public function destroy(Item $item): RedirectResponse
     {
+        if ($item->isInUse()) {
+            session()->flash('alert-danger', 'This item is on a request and cannot be deleted. Deactivate it instead.');
+
+            return back();
+        }
+
         $item->delete();
 
         session()->flash('alert-success', 'Item deleted.');
@@ -68,22 +71,13 @@ class ItemController extends Controller
     private function validated(Request $request, ?Item $item = null): array
     {
         $data = $request->validate([
-            'store_id' => 'required|integer|exists:inv_stores,id',
-            // A category is optional, but it must be one of the chosen store's.
-            'item_category_id' => [
-                'nullable', 'integer',
-                Rule::exists('inv_item_categories', 'id')->where('store_id', $request->input('store_id')),
-            ],
+            'item_category_id' => 'nullable|integer|exists:inv_item_categories,id',
             'unit_id' => 'required|integer|exists:inv_units,id',
             'code' => ['nullable', 'string', 'max:30', Rule::unique('inv_items', 'code')->ignore($item?->id)],
-            'name' => [
-                'required', 'string', 'max:150',
-                Rule::unique('inv_items', 'name')->where('store_id', $request->input('store_id'))->ignore($item?->id),
-            ],
+            'name' => ['required', 'string', 'max:150', Rule::unique('inv_items', 'name')->ignore($item?->id)],
             'reorder_level' => 'nullable|numeric|min:0',
         ], [
-            'name.unique' => 'This store already has an item with that name.',
-            'item_category_id.exists' => 'Choose a category that belongs to the selected store.',
+            'name.unique' => 'There is already an item with that name.',
         ]);
 
         $data['item_category_id'] = $data['item_category_id'] ?? null;

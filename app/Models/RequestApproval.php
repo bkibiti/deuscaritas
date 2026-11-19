@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Permission\Models\Role;
 
 /**
  * One step of the chain for one request: who signs it, and what they decided.
@@ -25,14 +26,15 @@ class RequestApproval extends Model
     protected $table = 'request_approvals';
 
     protected $fillable = [
-        'request_id', 'round', 'position', 'step_key', 'step_name', 'approver_id', 'status',
+        'request_id', 'round', 'position', 'step_key', 'step_name', 'role_id', 'scope_school_id', 'status',
         'activated_at', 'acted_by', 'acted_at', 'comment', 'content_hash',
     ];
 
     protected function casts(): array
     {
         return [
-            'approver_id' => 'integer',
+            'role_id' => 'integer',
+            'scope_school_id' => 'integer',
             'activated_at' => 'datetime',
             'acted_at' => 'datetime',
         ];
@@ -43,9 +45,20 @@ class RequestApproval extends Model
         return $this->belongsTo(SchoolRequest::class, 'request_id');
     }
 
-    public function approver(): BelongsTo
+    public function role(): BelongsTo
     {
-        return $this->belongsTo(User::class, 'approver_id');
+        return $this->belongsTo(Role::class);
+    }
+
+    /**
+     * Whether this user may act on the step now: it is pending, they hold its role (in the
+     * request's school, when the step is school-scoped) and it is not their own request.
+     */
+    public function isActionableBy(User $user): bool
+    {
+        return $this->status === self::STATUS_PENDING
+            && $this->request->requester_id !== $user->id
+            && $user->holdsRole($this->role_id, $this->scope_school_id);
     }
 
     public function actedBy(): BelongsTo

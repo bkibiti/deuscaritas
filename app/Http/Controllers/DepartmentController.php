@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\Department;
 use App\Models\School;
-use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
@@ -14,11 +13,10 @@ class DepartmentController extends Controller
 {
     public function index(): View
     {
-        $departments = Department::with(['school', 'head'])->orderBy('name')->get();
+        $departments = Department::with('school')->withCount('requests')->orderBy('name')->get();
         $schools = School::orderBy('name')->get(['id', 'name', 'is_active']);
-        $users = User::where('status', 1)->orderBy('name')->get(['id', 'name']);
 
-        return view('masters.departments.index', compact('departments', 'schools', 'users'));
+        return view('masters.departments.index', compact('departments', 'schools'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -69,7 +67,6 @@ class DepartmentController extends Controller
                     ->where('school_id', $request->input('school_id') ?: null)
                     ->ignore($department?->id),
             ],
-            'head_user_id' => 'nullable|integer|exists:users,id',
         ], [
             'name.unique' => 'This school already has a department with that name.',
         ]);

@@ -3,30 +3,28 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * One of the Deus Caritas schools. Its head is the Head of School step of the approval chain.
- * A school that has departments or requests cannot be deleted, only deactivated.
+ * One of the Deus Caritas schools. Staff belong to a school; the Head of School is whoever holds
+ * that role there. A school that has departments or requests cannot be deleted, only deactivated.
  */
 class School extends Model
 {
     protected $table = 'schools';
 
-    protected $fillable = ['name', 'code', 'head_user_id', 'is_active'];
+    protected $fillable = ['name', 'code', 'is_active'];
 
     protected function casts(): array
     {
         return [
-            'head_user_id' => 'integer',
             'is_active' => 'boolean',
         ];
     }
 
-    public function head(): BelongsTo
+    public function users(): HasMany
     {
-        return $this->belongsTo(User::class, 'head_user_id');
+        return $this->hasMany(User::class);
     }
 
     public function departments(): HasMany

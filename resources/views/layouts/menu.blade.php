@@ -1,6 +1,6 @@
 @php
     $usersActive = request()->routeIs('roles.*', 'users.*');
-    $mastersActive = request()->routeIs('schools.*', 'departments.*', 'request-categories.*', 'workflow-steps.*', 'reminders.*');
+    $mastersActive = request()->routeIs('schools.*', 'departments.*', 'request-categories.*', 'workflow-steps.*', 'configurations.*');
     $requestScope = request()->routeIs('requests.index') ? (in_array(request('scope'), ['inbox', 'all'], true) ? request('scope') : 'mine') : null;
     $requestsActive = request()->routeIs('requests.*');
     $inventoryActive = request()->routeIs('inventory.*');
@@ -60,13 +60,27 @@
     </ul>
 </li>
 
-@canany(['View Inventory Items', 'View Suppliers', 'View Inventory Setup'])
+@canany(['View Stock', 'View Inventory Items', 'View Suppliers', 'View Inventory Setup'])
     <li class="nav-item {{ $inventoryActive ? 'menu-open' : '' }}">
         <a href="#" class="nav-link {{ $inventoryActive ? 'active' : '' }}">
             <i class="nav-icon bi bi-box-seam"></i>
             <p>Inventory <i class="nav-arrow bi bi-chevron-right"></i></p>
         </a>
         <ul class="nav nav-treeview">
+            @can('View Stock')
+                <li class="nav-item">
+                    <a href="{{ route('inventory.stock.index') }}" class="nav-link {{ request()->routeIs('inventory.stock.*') ? 'active' : '' }}">
+                        <i class="nav-icon bi bi-circle"></i>
+                        <p>Stock Balances</p>
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a href="{{ route('inventory.stock-in.index') }}" class="nav-link {{ request()->routeIs('inventory.stock-in.*') ? 'active' : '' }}">
+                        <i class="nav-icon bi bi-circle"></i>
+                        <p>Stock In</p>
+                    </a>
+                </li>
+            @endcan
             @can('View Inventory Items')
                 <li class="nav-item">
                     <a href="{{ route('inventory.items.index') }}" class="nav-link {{ request()->routeIs('inventory.items.*') ? 'active' : '' }}">
@@ -111,7 +125,7 @@
     <li class="nav-item {{ $usersActive ? 'menu-open' : '' }}">
         <a href="#" class="nav-link {{ $usersActive ? 'active' : '' }}">
             <i class="nav-icon bi bi-person-gear"></i>
-            <p>Users <i class="nav-arrow bi bi-chevron-right"></i></p>
+            <p>User Management <i class="nav-arrow bi bi-chevron-right"></i></p>
         </a>
         <ul class="nav nav-treeview">
             @can('View Roles')
@@ -134,11 +148,11 @@
     </li>
 @endcanany
 
-@canany(['View Masters', 'View Schools', 'View Departments', 'View Request Categories', 'View Approval Chain', 'View Reminders'])
+@canany(['View Administration', 'View Schools', 'View Departments', 'View Request Categories', 'View Approval Chain', 'View Settings'])
     <li class="nav-item {{ $mastersActive ? 'menu-open' : '' }}">
         <a href="#" class="nav-link {{ $mastersActive ? 'active' : '' }}">
             <i class="nav-icon bi bi-list-ul"></i>
-            <p>Masters <i class="nav-arrow bi bi-chevron-right"></i></p>
+            <p>Administration <i class="nav-arrow bi bi-chevron-right"></i></p>
         </a>
         <ul class="nav nav-treeview">
             @can('View Schools')
@@ -173,11 +187,11 @@
                     </a>
                 </li>
             @endcan
-            @can('View Reminders')
+            @can('View Settings')
                 <li class="nav-item">
-                    <a href="{{ route('reminders.index') }}" class="nav-link {{ request()->routeIs('reminders.*') ? 'active' : '' }}">
+                    <a href="{{ route('configurations.index') }}" class="nav-link {{ request()->routeIs('configurations.*') ? 'active' : '' }}">
                         <i class="nav-icon bi bi-circle"></i>
-                        <p>Reminders</p>
+                        <p>Settings</p>
                     </a>
                 </li>
             @endcan
@@ -185,11 +199,3 @@
     </li>
 @endcanany
 
-@can('View Settings')
-    <li class="nav-item">
-        <a href="{{ route('configurations.index') }}" class="nav-link {{ request()->routeIs('configurations.*') ? 'active' : '' }}">
-            <i class="nav-icon bi bi-gear"></i>
-            <p>Settings</p>
-        </a>
-    </li>
-@endcan

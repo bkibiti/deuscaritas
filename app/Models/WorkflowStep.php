@@ -2,20 +2,23 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Permission\Models\Role;
 
 /**
- * One step of the approval chain. The chain is data: the order, who signs each step and
- * whether a step is in use can change without touching code.
+ * One step of the approval chain. The chain is data: the order, which role signs each step
+ * (and whether the signer must belong to the request's school) and whether a step is in use
+ * can change without touching code.
  */
 class WorkflowStep extends Model
 {
-    public const APPROVER_DEPARTMENT_HEAD = 'department_head';
+    /** The signer must belong to the school the request is for. */
+    public const SCOPE_SCHOOL = 'school';
 
-    public const APPROVER_SCHOOL_HEAD = 'school_head';
-
-    public const APPROVER_USER = 'user';
+    /** A holder of the role signs, wherever they work. */
+    public const SCOPE_ANY = 'any';
 
     public const CONDITION_ALWAYS = 'always';
 
@@ -23,27 +26,29 @@ class WorkflowStep extends Model
 
     protected $table = 'workflow_steps';
 
-    protected $fillable = ['position', 'key', 'name', 'approver_type', 'user_id', 'condition', 'is_active'];
+    protected $fillable = ['position', 'key', 'name', 'role_id', 'scope', 'condition', 'is_active'];
 
     protected function casts(): array
     {
         return [
-            'user_id' => 'integer',
+            'role_id' => 'integer',
             'is_active' => 'boolean',
         ];
     }
 
-    public function user(): BelongsTo
+    public function role(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(Role::class);
     }
 
-    /**
-     * Whether one named user signs this step (rather than a department or school head).
-     */
-    public function hasNamedApprover(): bool
+    public function isSchoolScoped(): bool
     {
-        return $this->approver_type === self::APPROVER_USER;
+        return $this->scope === self::SCOPE_SCHOOL;
+    }
+
+    public function scopeLabel(): string
+    {
+        return $this->isSchoolScoped() ? "in the request's school" : 'anywhere';
     }
 
     /**
@@ -61,14 +66,23 @@ class WorkflowStep extends Model
     }
 
     /**
-     * The user who signs this step for the request, or null when nobody is set.
+     * The school the signer must belong to for this request, or null when any holder may sign.
      */
-    public function approverIdFor(SchoolRequest $request): ?int
+    public function schoolFor(SchoolRequest $request): ?int
     {
-        return match ($this->approver_type) {
-            self::APPROVER_DEPARTMENT_HEAD => $request->department?->head_user_id,
-            self::APPROVER_SCHOOL_HEAD => $request->school?->head_user_id,
-            default => $this->user_id,
-        };
+        return $this->isSchoolScoped() ? $request->school_id : null;
+    }
+
+    /**
+     * Active users who hold the step's role (in the request's school, for a school step).
+     *
+     * @return Builder<User>
+     */
+    public function holdersFor(SchoolRequest $request): Builder
+    {
+        return User::query()
+            ->where('status', 1)
+            ->whereHas('roles', fn (Builder $roles) => $roles->where('roles.id', $this->role_id))
+            ->when($this->schoolFor($request) !== null, fn (Builder $users) => $users->where('school_id', $this->schoolFor($request)));
     }
 }

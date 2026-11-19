@@ -6,7 +6,7 @@
 
 @section('content-sub-title')
     <li class="breadcrumb-item"><a href="{{ route('home') }}"><i class="bi bi-house"></i></a></li>
-    <li class="breadcrumb-item active">Masters / Departments</li>
+    <li class="breadcrumb-item active">Administration / Departments</li>
 @endsection
 
 @section("content")
@@ -30,7 +30,7 @@
                         <tr>
                             <th>Name</th>
                             <th>School</th>
-                            <th>Head of Department</th>
+                            <th class="text-end">Requests</th>
                             <th>Status</th>
                             <th></th>
                         </tr>
@@ -40,14 +40,14 @@
                             <tr>
                                 <td>{{ $department->name }}</td>
                                 <td>{{ $department->school?->name ?: 'All schools' }}</td>
-                                <td>{{ $department->head?->name ?: '—' }}</td>
+                                <td class="text-end">{{ $department->requests_count }}</td>
                                 <td><span class="badge {{ $department->is_active ? 'text-bg-success' : 'text-bg-secondary' }}">{{ $department->is_active ? 'Active' : 'Inactive' }}</span></td>
                                 <td class="text-end" style="white-space: nowrap">
                                     @can('Manage Departments')
                                         <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#department-modal"
                                             data-action="{{ route('departments.update', $department) }}" data-method="PUT" data-title="Edit department"
                                             data-name="{{ $department->name }}" data-school="{{ $department->school_id }}"
-                                            data-head="{{ $department->head_user_id }}" data-active="{{ $department->is_active ? 1 : 0 }}">
+                                            data-active="{{ $department->is_active ? 1 : 0 }}">
                                             Edit
                                         </button>
                                         <form method="POST" action="{{ route('departments.destroy', $department) }}" class="d-inline"
@@ -60,7 +60,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" class="text-muted p-3">No departments yet.</td></tr>
+                            <tr><td colspan="6" class="text-muted p-3">No departments yet.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

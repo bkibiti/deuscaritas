@@ -27,17 +27,14 @@ class DepartmentTest extends TestCase
 
     public function test_store_creates_a_department_in_a_school(): void
     {
-        $head = User::factory()->create();
-
         $response = $this->actingAs($this->user)->post(route('departments.store'), [
             'name' => 'Science',
             'school_id' => $this->school->id,
-            'head_user_id' => $head->id,
             'is_active' => '1',
         ]);
 
         $response->assertSessionHasNoErrors();
-        $this->assertDatabaseHas('departments', ['name' => 'Science', 'school_id' => $this->school->id, 'head_user_id' => $head->id]);
+        $this->assertDatabaseHas('departments', ['name' => 'Science', 'school_id' => $this->school->id]);
     }
 
     public function test_store_creates_a_department_that_serves_every_school(): void
@@ -84,12 +81,11 @@ class DepartmentTest extends TestCase
         $response = $this->actingAs($this->user)->put(route('departments.update', $department), [
             'name' => 'Science',
             'school_id' => $this->school->id,
-            'head_user_id' => $this->user->id,
             'is_active' => '1',
         ]);
 
         $response->assertSessionHasNoErrors();
-        $this->assertSame($this->user->id, $department->fresh()->head_user_id);
+        $this->assertSame('Science', $department->fresh()->name);
     }
 
     public function test_a_department_can_be_deleted(): void

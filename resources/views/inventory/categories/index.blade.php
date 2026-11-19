@@ -29,7 +29,6 @@
                     <thead>
                         <tr>
                             <th>Name</th>
-                            <th>Store</th>
                             <th class="text-end">Items</th>
                             <th></th>
                         </tr>
@@ -38,13 +37,12 @@
                         @forelse ($categories as $category)
                             <tr>
                                 <td>{{ $category->name }}</td>
-                                <td>{{ $category->store?->name }}</td>
                                 <td class="text-end">{{ $category->items_count }}</td>
                                 <td class="text-end" style="white-space: nowrap">
                                     @can('Manage Inventory Setup')
                                         <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#inv-category-modal"
                                             data-action="{{ route('inventory.categories.update', $category) }}" data-method="PUT" data-title="Edit category"
-                                            data-name="{{ $category->name }}" data-store="{{ $category->store_id }}">
+                                            data-name="{{ $category->name }}">
                                             Edit
                                         </button>
                                         @if ($category->items_count === 0)
@@ -59,7 +57,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="4" class="text-muted p-3">No categories yet.</td></tr>
+                            <tr><td colspan="3" class="text-muted p-3">No categories yet.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

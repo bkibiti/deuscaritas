@@ -31,7 +31,6 @@
                             <th>Name</th>
                             <th>Code</th>
                             <th>Storekeepers</th>
-                            <th class="text-end">Items</th>
                             <th>Status</th>
                             <th></th>
                         </tr>
@@ -42,7 +41,6 @@
                                 <td>{{ $store->name }}<div class="small text-body-secondary">{{ $store->description }}</div></td>
                                 <td>{{ $store->code ?: '—' }}</td>
                                 <td>{{ $store->keepers->pluck('name')->join(', ') ?: '—' }}</td>
-                                <td class="text-end">{{ $store->items_count }}</td>
                                 <td><span class="badge {{ $store->is_active ? 'text-bg-success' : 'text-bg-secondary' }}">{{ $store->is_active ? 'Active' : 'Inactive' }}</span></td>
                                 <td class="text-end" style="white-space: nowrap">
                                     @can('Manage Inventory Setup')
@@ -52,19 +50,17 @@
                                             data-keepers="{{ $store->keepers->pluck('id')->join(',') }}" data-active="{{ $store->is_active ? 1 : 0 }}">
                                             Edit
                                         </button>
-                                        @if ($store->items_count === 0)
-                                            <form method="POST" action="{{ route('inventory.stores.destroy', $store) }}" class="d-inline"
-                                                onsubmit="return confirm('Delete store {{ addslashes($store->name) }}?');">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
-                                            </form>
-                                        @endif
+                                        <form method="POST" action="{{ route('inventory.stores.destroy', $store) }}" class="d-inline"
+                                            onsubmit="return confirm('Delete store {{ addslashes($store->name) }}?');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="btn btn-outline-danger btn-sm"><i class="bi bi-trash"></i></button>
+                                        </form>
                                     @endcan
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="6" class="text-muted p-3">No stores yet.</td></tr>
+                            <tr><td colspan="5" class="text-muted p-3">No stores yet.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

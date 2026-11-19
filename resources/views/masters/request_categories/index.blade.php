@@ -6,7 +6,7 @@
 
 @section('content-sub-title')
     <li class="breadcrumb-item"><a href="{{ route('home') }}"><i class="bi bi-house"></i></a></li>
-    <li class="breadcrumb-item active">Masters / Request Categories</li>
+    <li class="breadcrumb-item active">Administration / Request Categories</li>
 @endsection
 
 @section("content")

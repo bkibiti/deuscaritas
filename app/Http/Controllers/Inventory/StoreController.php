@@ -14,7 +14,7 @@ class StoreController extends Controller
 {
     public function index(): View
     {
-        $stores = Store::with('keepers')->withCount('items')->orderBy('name')->get();
+        $stores = Store::with('keepers')->orderBy('name')->get();
         $users = User::where('status', 1)->orderBy('name')->get(['id', 'name']);
 
         return view('inventory.stores.index', compact('stores', 'users'));
@@ -47,7 +47,7 @@ class StoreController extends Controller
     public function destroy(Store $store): RedirectResponse
     {
         if ($store->isInUse()) {
-            session()->flash('alert-danger', 'This store has items or categories and cannot be deleted. Deactivate it instead.');
+            session()->flash('alert-danger', 'This store has stock records and cannot be deleted. Deactivate it instead.');
 
             return back();
         }

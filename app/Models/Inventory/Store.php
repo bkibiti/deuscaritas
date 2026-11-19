@@ -8,8 +8,8 @@ use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 /**
- * A physical store (Food, Building Materials). Each item belongs to one store, and the
- * store's keepers are the users who record its stock movements.
+ * A physical store where stock is kept. Its keepers are the users who record its stock
+ * movements. Items are not tied to a store: any store can hold any item.
  */
 class Store extends Model
 {
@@ -29,21 +29,16 @@ class Store extends Model
         return $this->belongsToMany(User::class, 'inv_store_keepers', 'store_id', 'user_id');
     }
 
-    public function categories(): HasMany
+    public function documents(): HasMany
     {
-        return $this->hasMany(ItemCategory::class);
-    }
-
-    public function items(): HasMany
-    {
-        return $this->hasMany(Item::class);
+        return $this->hasMany(StockDocument::class);
     }
 
     /**
-     * A store that has items or categories cannot be deleted, only deactivated.
+     * A store that has stock documents cannot be deleted, only deactivated.
      */
     public function isInUse(): bool
     {
-        return $this->items()->exists() || $this->categories()->exists();
+        return $this->documents()->exists();
     }
 }

@@ -30,7 +30,8 @@ class DashboardTest extends TestCase
             ->pluck('value', 'label');
 
         $this->assertSame(1, $counts['Schools']);
-        $this->assertSame(1, $counts['Departments']);
+        // The ten official departments, plus this one.
+        $this->assertSame(11, $counts['Departments']);
     }
 
     public function test_master_data_links_are_hidden_without_permission(): void

@@ -116,6 +116,14 @@ class SchoolRequest extends Model
         return $this->hasMany(RequestAction::class, 'request_id')->orderBy('id');
     }
 
+    /**
+     * The request's lines, in the order they were entered.
+     */
+    public function items(): HasMany
+    {
+        return $this->hasMany(RequestItem::class, 'request_id')->orderBy('position')->orderBy('id');
+    }
+
     public function attachments(): HasMany
     {
         return $this->hasMany(RequestAttachment::class, 'request_id')->orderBy('id');
@@ -135,7 +143,8 @@ class SchoolRequest extends Model
             $query->where('requester_id', $user->id)
                 ->orWhere('assigned_to', $user->id)
                 ->orWhereHas('approvals', function (Builder $approvals) use ($user) {
-                    $approvals->where('approver_id', $user->id)->where('status', '!=', RequestApproval::STATUS_WAITING);
+                    $approvals->where('status', '!=', RequestApproval::STATUS_WAITING)
+                        ->where(fn (Builder $mine) => $mine->where('acted_by', $user->id)->orWhere(fn (Builder $role) => static::holdsStep($role, $user)));
                 });
         });
     }
@@ -146,7 +155,18 @@ class SchoolRequest extends Model
     public function scopeAwaitingActionBy(Builder $query, User $user): void
     {
         $query->where('status', self::STATUS_PENDING)
-            ->whereHas('currentApproval', fn (Builder $approval) => $approval->where('approver_id', $user->id));
+            ->where('requester_id', '!=', $user->id)
+            ->whereHas('currentApproval', fn (Builder $approval) => static::holdsStep($approval, $user));
+    }
+
+    /**
+     * Narrow approval rows to the steps this user can sign: they hold the step's role and,
+     * for a school step, belong to the school it names.
+     */
+    private static function holdsStep(Builder $approvals, User $user): void
+    {
+        $approvals->whereIn('role_id', $user->roles->pluck('id'))
+            ->where(fn (Builder $scope) => $scope->whereNull('scope_school_id')->orWhere('scope_school_id', $user->school_id));
     }
 
     public function canBeViewedBy(User $user): bool
@@ -171,7 +191,7 @@ class SchoolRequest extends Model
 
     public function isAwaiting(User $user): bool
     {
-        return $this->status === self::STATUS_PENDING && $this->currentApproval?->approver_id === $user->id;
+        return $this->status === self::STATUS_PENDING && $this->currentApproval?->isActionableBy($user) === true;
     }
 
     public function canBeAssignedBy(User $user): bool
@@ -236,6 +256,11 @@ class SchoolRequest extends Model
             $this->required_date?->toDateString(),
             $this->quantity === null ? null : (string) $this->quantity,
             $this->estimated_cost === null ? null : (string) $this->estimated_cost,
+            $this->items()->get()->map(fn (RequestItem $line) => [
+                $line->item_id,
+                (string) $line->quantity,
+                $line->unit_price === null ? null : (string) $line->unit_price,
+            ])->all(),
         ]));
     }
 }

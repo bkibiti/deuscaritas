@@ -8,7 +8,7 @@ Change Password
 
 @section('content-sub-title')
 <li class="breadcrumb-item"><a href="{{route('home')}}"><i class="bi bi-house"></i></a></li>
-<li class="breadcrumb-item"><a href="#">Users / Change Password</a></li>
+<li class="breadcrumb-item"><a href="#">User Management / Change Password</a></li>
 @endsection
 @section("content")
 

@@ -26,10 +26,10 @@
         <div class="card-body border-bottom py-2">
             <form method="GET" action="{{ route('inventory.items.index') }}" class="row g-2 align-items-center">
                 <div class="col-auto">
-                    <select name="store" class="form-select form-select-sm" onchange="this.form.submit()">
-                        <option value="">All stores</option>
-                        @foreach ($stores as $store)
-                            <option value="{{ $store->id }}" @selected((string) $storeId === (string) $store->id)>{{ $store->name }}</option>
+                    <select name="category" class="form-select form-select-sm" onchange="this.form.submit()">
+                        <option value="">All categories</option>
+                        @foreach ($categories as $category)
+                            <option value="{{ $category->id }}" @selected((string) $categoryId === (string) $category->id)>{{ $category->name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -42,7 +42,6 @@
                         <tr>
                             <th>Item</th>
                             <th>Code</th>
-                            <th>Store</th>
                             <th>Category</th>
                             <th>Unit</th>
                             <th class="text-end">Reorder level</th>
@@ -55,7 +54,6 @@
                             <tr>
                                 <td>{{ $item->name }}</td>
                                 <td>{{ $item->code ?: '—' }}</td>
-                                <td>{{ $item->store?->name }}</td>
                                 <td>{{ $item->category?->name ?: '—' }}</td>
                                 <td>{{ $item->unit?->abbreviation }}</td>
                                 <td class="text-end">{{ rtrim(rtrim(number_format((float) $item->reorder_level, 3), '0'), '.') }}</td>
@@ -64,7 +62,7 @@
                                     @can('Manage Inventory Items')
                                         <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#inv-item-modal"
                                             data-action="{{ route('inventory.items.update', $item) }}" data-method="PUT" data-title="Edit item"
-                                            data-name="{{ $item->name }}" data-code="{{ $item->code }}" data-store="{{ $item->store_id }}"
+                                            data-name="{{ $item->name }}" data-code="{{ $item->code }}"
                                             data-category="{{ $item->item_category_id }}" data-unit="{{ $item->unit_id }}"
                                             data-reorder="{{ (float) $item->reorder_level }}" data-active="{{ $item->is_active ? 1 : 0 }}">
                                             Edit
@@ -79,7 +77,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="8" class="text-muted p-3">No items yet.</td></tr>
+                            <tr><td colspan="7" class="text-muted p-3">No items yet.</td></tr>
                         @endforelse
                     </tbody>
                 </table>
