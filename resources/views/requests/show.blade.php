@@ -37,8 +37,6 @@
                 <dd class="col-sm-8">{{ $schoolRequest->school?->name ?: '—' }}</dd>
                 <dt class="col-sm-4">Category</dt>
                 <dd class="col-sm-8">{{ $schoolRequest->category?->name }}</dd>
-                <dt class="col-sm-4">Description</dt>
-                <dd class="col-sm-8" style="white-space: pre-line">{{ $schoolRequest->description }}</dd>
                 <dt class="col-sm-4">Reason / justification</dt>
                 <dd class="col-sm-8" style="white-space: pre-line">{{ $schoolRequest->justification ?: '—' }}</dd>
                 <dt class="col-sm-4">Required by</dt>
@@ -70,6 +68,9 @@
                             <th>Particular</th>
                             <th class="text-end">Qty</th>
                             <th>Unit</th>
+                            @if ($schoolRequest->stockDocuments->isNotEmpty())
+                                <th class="text-end">Issued</th>
+                            @endif
                         </tr>
                     </thead>
                     <tbody>
@@ -79,6 +80,9 @@
                                 <td>{{ $line->item?->name }}</td>
                                 <td class="text-end">{{ rtrim(rtrim(number_format((float) $line->quantity, 3), '0'), '.') }}</td>
                                 <td>{{ $line->item?->unit?->abbreviation }}</td>
+                                @if ($schoolRequest->stockDocuments->isNotEmpty())
+                                    <td class="text-end {{ (float) $line->issued_quantity < (float) $line->quantity ? 'text-warning-emphasis fw-semibold' : '' }}">{{ rtrim(rtrim(number_format((float) $line->issued_quantity, 3), '0'), '.') }}</td>
+                                @endif
                             </tr>
                         @endforeach
                     </tbody>
@@ -101,6 +105,30 @@
             </ul>
         @endif
     </div>
+
+    @if ($schoolRequest->stockDocuments->isNotEmpty())
+        <div class="card">
+            <div class="card-header"><h3 class="card-title">Issued from stock</h3></div>
+            <ul class="list-group list-group-flush">
+                @foreach ($schoolRequest->stockDocuments as $document)
+                    <li class="list-group-item">
+                        <div class="d-flex flex-wrap justify-content-between gap-2">
+                            <strong>{{ $document->number }}</strong>
+                            <span class="text-body-secondary small">{{ $document->store?->name }} &middot; {{ $document->confirmed_at ? displayTime($document->confirmed_at) : '' }}</span>
+                        </div>
+                        <div class="small">Received by <strong>{{ $document->receiver?->name }}</strong></div>
+                        @if ($document->notes)<div class="small text-body-secondary fst-italic">{{ $document->notes }}</div>@endif
+                        <div class="small text-body-secondary">
+                            @foreach ($document->lines as $line)
+                                {{ $line->item?->name }} {{ rtrim(rtrim(number_format((float) $line->quantity, 3), '0'), '.') }} {{ $line->item?->unit?->abbreviation }}{{ $loop->last ? '' : ',' }}
+                            @endforeach
+                        </div>
+                        <a href="{{ route('requests.issue-note', [$schoolRequest, $document]) }}" target="_blank" class="btn btn-outline-secondary btn-sm mt-2"><i class="bi bi-printer"></i> Print issue note</a>
+                    </li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
 
     @if ($schoolRequest->approvals->isNotEmpty())
         <div class="card">
@@ -144,20 +172,31 @@
     @endif
 
     @if ($schoolRequest->actions->isNotEmpty())
+        @php
+            $keep = 4;
+            $total = $schoolRequest->actions->count();
+            $earlier = $total > $keep ? $schoolRequest->actions->take($total - $keep) : collect();
+            $recent = $total > $keep ? $schoolRequest->actions->slice($total - $keep) : $schoolRequest->actions;
+        @endphp
         <div class="card">
-            <div class="card-header"><h3 class="card-title">Timeline</h3></div>
-            <ul class="list-group list-group-flush">
-                @foreach ($schoolRequest->actions as $action)
-                    <li class="list-group-item">
-                        <div class="d-flex justify-content-between flex-wrap">
-                            <strong>{{ $action->label() }}</strong>
-                            <span class="text-body-secondary small">{{ displayTime($action->created_at) }}</span>
-                        </div>
-                        <div class="small text-body-secondary">{{ $action->user?->name }}</div>
-                        @if ($action->note)
-                            <div class="mt-1" style="white-space: pre-line">{{ $action->note }}</div>
-                        @endif
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h3 class="card-title mb-0">Timeline <span class="text-body-secondary fw-normal small">({{ $total }})</span></h3>
+                @if ($earlier->isNotEmpty())
+                    <button class="btn btn-link btn-sm p-0" type="button" data-bs-toggle="collapse" data-bs-target="#timeline-earlier" aria-expanded="false">Show {{ $earlier->count() }} earlier</button>
+                @endif
+            </div>
+            <ul class="list-group list-group-flush small">
+                @if ($earlier->isNotEmpty())
+                    <li class="list-group-item p-0 border-0">
+                        <ul class="list-group list-group-flush collapse" id="timeline-earlier">
+                            @foreach ($earlier as $action)
+                                @include('requests._timeline_row', ['action' => $action])
+                            @endforeach
+                        </ul>
                     </li>
+                @endif
+                @foreach ($recent as $action)
+                    @include('requests._timeline_row', ['action' => $action])
                 @endforeach
             </ul>
         </div>
@@ -246,6 +285,16 @@
                 </div>
                 <div class="card-footer text-end"><button type="submit" class="btn btn-primary">Assign</button></div>
             </form>
+        </div>
+    @endif
+
+    @if ($canIssue)
+        <div class="card">
+            <div class="card-header"><h3 class="card-title">Issue the items</h3></div>
+            <div class="card-body">
+                <p class="small text-body-secondary mb-3">This request is assigned to you. Choose the store for each item and who receives them. Confirming takes the stock out and completes the request.</p>
+                <a href="{{ route('requests.issue.create', $schoolRequest) }}" class="btn btn-success w-100"><i class="bi bi-box-arrow-up"></i> Issue items</a>
+            </div>
         </div>
     @endif
 

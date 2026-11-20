@@ -57,7 +57,6 @@ class RequestCategoryController extends Controller
     {
         $data = $request->validate([
             'name' => ['required', 'string', 'max:100', Rule::unique('request_categories', 'name')->ignore($category?->id)],
-            'description' => 'nullable|string|max:255',
             'director_cost_threshold' => 'nullable|numeric|min:0',
         ]);
 

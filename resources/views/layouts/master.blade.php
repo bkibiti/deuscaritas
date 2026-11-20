@@ -94,10 +94,17 @@
                         </a>
                         <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end">
                             <span class="dropdown-item dropdown-header">{{ notifications() }} {{ notifications() === 1 ? 'Notification' : 'Notifications' }}</span>
-                            @if (notifications() > 0)
+                            @php $waitingForMe = \App\Models\SchoolRequest::awaitingActionBy(auth()->user())->count(); @endphp
+                            @if ($waitingForMe > 0)
                                 <div class="dropdown-divider"></div>
                                 <a href="{{ route('requests.index', ['scope' => 'inbox']) }}" class="dropdown-item notification-item">
-                                    <i class="bi bi-file-earmark-text text-warning me-2"></i> {{ notifications() }} {{ notifications() === 1 ? 'request is' : 'requests are' }} waiting for your action
+                                    <i class="bi bi-file-earmark-text text-warning me-2"></i> {{ $waitingForMe }} {{ $waitingForMe === 1 ? 'request is' : 'requests are' }} waiting for your action
+                                </a>
+                            @endif
+                            @if (assignedToMe() > 0)
+                                <div class="dropdown-divider"></div>
+                                <a href="{{ route('requests.index', ['scope' => 'assigned']) }}" class="dropdown-item notification-item">
+                                    <i class="bi bi-box-arrow-up text-primary me-2"></i> {{ assignedToMe() }} {{ assignedToMe() === 1 ? 'request is' : 'requests are' }} assigned to you
                                 </a>
                             @endif
                         </div>

@@ -13,7 +13,7 @@ class RequestCategory extends Model
 {
     protected $table = 'request_categories';
 
-    protected $fillable = ['name', 'description', 'requires_director', 'director_cost_threshold', 'is_active'];
+    protected $fillable = ['name', 'requires_director', 'director_cost_threshold', 'is_active'];
 
     protected function casts(): array
     {

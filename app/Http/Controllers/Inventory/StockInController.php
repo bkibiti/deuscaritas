@@ -22,6 +22,7 @@ class StockInController extends Controller
     public function index(Request $request): View
     {
         $documents = StockDocument::with(['store', 'supplier', 'lines'])
+            ->where('type', '!=', StockDocument::TYPE_ISSUE)
             ->when($request->filled('store'), fn ($query) => $query->where('store_id', $request->integer('store')))
             ->latest('document_date')->latest('id')
             ->paginate(25)->withQueryString();
@@ -92,6 +93,9 @@ class StockInController extends Controller
 
     public function show(StockDocument $document): View
     {
+        // Issues belong to a request and are read there.
+        abort_if($document->isIssue(), 404);
+
         $document->load(['store', 'supplier', 'creator', 'confirmer', 'lines.item.unit']);
 
         return view('inventory.stock-in.show', compact('document'));

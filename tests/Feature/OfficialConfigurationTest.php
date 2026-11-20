@@ -85,7 +85,7 @@ class OfficialConfigurationTest extends TestCase
      */
     public function test_a_database_with_trial_store_owned_items_upgrades_cleanly(): void
     {
-        Artisan::call('migrate:rollback', ['--step' => 8]);
+        Artisan::call('migrate:rollback', ['--step' => 10]);
 
         DB::table('inv_items')->delete();
         DB::table('inv_item_categories')->delete();

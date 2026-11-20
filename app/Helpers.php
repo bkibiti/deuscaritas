@@ -63,7 +63,17 @@ function groupLogoPath(): ?string
  */
 function notifications()
 {
-    return Auth::check() ? SchoolRequest::awaitingActionBy(Auth::user())->count() : 0;
+    return Auth::check() ? SchoolRequest::awaitingActionBy(Auth::user())->count() + assignedToMe() : 0;
+}
+
+/**
+ * Requests assigned to the signed-in user that they still have to carry out.
+ */
+function assignedToMe()
+{
+    return Auth::check()
+        ? SchoolRequest::where('assigned_to', Auth::id())->where('status', SchoolRequest::STATUS_IN_PROGRESS)->count()
+        : 0;
 }
 
 /**

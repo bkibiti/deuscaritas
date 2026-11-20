@@ -63,9 +63,10 @@ class RequestItemsTest extends TestCase
         $this->maandazi = Item::create(['unit_id' => $piece, 'name' => 'Maandazi madogo', 'is_active' => true]);
 
         // The stores hold some of each, so all three can be requested.
-        foreach ([$this->biscuits, $this->soda, $this->maandazi] as $item) {
+        foreach ([$this->biscuits, $this->soda] as $item) {
             $this->stock($item, 40);
         }
+        $this->stock($this->maandazi, 200);
     }
 
     private function stock(Item $item, float $quantity, string $storeCode = 'FOOD'): void
@@ -87,7 +88,6 @@ class RequestItemsTest extends TestCase
             'department_id' => $this->department->id,
             'request_category_id' => $this->category->id,
             'title' => 'Refreshments for the parents meeting',
-            'description' => 'Snacks and drinks for 100 parents.',
             'items' => $items,
             'action' => 'submit',
         ];
@@ -220,17 +220,33 @@ class RequestItemsTest extends TestCase
             ->assertSessionHasErrors('items.0.item_id');
     }
 
-    public function test_an_item_already_on_a_request_stays_when_its_stock_runs_out(): void
+    public function test_a_line_cannot_ask_for_more_than_the_stores_hold(): void
+    {
+        $this->actingAs($this->requester)
+            ->post(route('requests.store'), $this->form([['item_id' => $this->biscuits->id, 'quantity' => 41]]))
+            ->assertSessionHasErrors('items.0.quantity');
+        $this->assertSame(0, SchoolRequest::count());
+
+        $this->actingAs($this->requester)
+            ->post(route('requests.store'), $this->form([['item_id' => $this->biscuits->id, 'quantity' => 40]]))
+            ->assertSessionHasNoErrors();
+        $this->assertSame(1, SchoolRequest::count());
+    }
+
+    public function test_the_stock_limit_applies_when_editing_and_names_the_item(): void
     {
         $this->actingAs($this->requester)
             ->post(route('requests.store'), $this->form([['item_id' => $this->soda->id, 'quantity' => 2]], ['action' => 'draft']));
         $request = SchoolRequest::latest('id')->first();
-        $this->stock($this->soda, 0);
+        $this->stock($this->soda, 1);
 
         $this->actingAs($this->requester)->get(route('requests.edit', $request))
-            ->assertOk()->assertSee('Pepsi and Mirinda (0 available)');
+            ->assertOk()->assertSee('Pepsi and Mirinda (1 available)');
         $this->actingAs($this->requester)
             ->put(route('requests.update', $request), $this->form([['item_id' => $this->soda->id, 'quantity' => 3]], ['action' => 'draft']))
+            ->assertSessionHasErrors('items.0.quantity');
+        $this->actingAs($this->requester)
+            ->put(route('requests.update', $request), $this->form([['item_id' => $this->soda->id, 'quantity' => 1]], ['action' => 'draft']))
             ->assertSessionHasNoErrors();
     }
 

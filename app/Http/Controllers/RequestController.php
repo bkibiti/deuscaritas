@@ -20,13 +20,13 @@ use Illuminate\View\View;
 class RequestController extends Controller
 {
     /**
-     * One list, three views of it: the user's own requests, those awaiting their signature,
-     * and (with permission) every request.
+     * One list, four views of it: the user's own requests, those awaiting their signature,
+     * those assigned to them to carry out, and (with permission) every request.
      */
     public function index(Request $request): View
     {
         $user = $request->user();
-        $scope = in_array($request->query('scope'), ['inbox', 'all'], true) ? $request->query('scope') : 'mine';
+        $scope = in_array($request->query('scope'), ['inbox', 'assigned', 'all'], true) ? $request->query('scope') : 'mine';
 
         abort_if($scope === 'all' && ! $user->can('View All Requests'), 403);
 
@@ -36,11 +36,12 @@ class RequestController extends Controller
 
         match ($scope) {
             'inbox' => $query->awaitingActionBy($user),
+            'assigned' => $query->where('assigned_to', $user->id)->where('status', SchoolRequest::STATUS_IN_PROGRESS),
             'all' => $query->where('status', '!=', SchoolRequest::STATUS_DRAFT),
             default => $query->where('requester_id', $user->id),
         };
 
-        if ($scope !== 'inbox' && $request->filled('status')) {
+        if (! in_array($scope, ['inbox', 'assigned'], true) && $request->filled('status')) {
             $query->where('status', $request->query('status'));
         }
 
@@ -85,11 +86,15 @@ class RequestController extends Controller
         $schoolRequest->load([
             'requester', 'department', 'school', 'category', 'assignee', 'attachments.uploader', 'items.item.unit',
             'approvals.actedBy', 'approvals.role', 'currentApproval', 'actions.user',
+            'stockDocuments.store', 'stockDocuments.receiver', 'stockDocuments.lines.item.unit',
         ]);
+
+        $canIssue = $schoolRequest->canBeIssuedBy($user);
 
         return view('requests.show', [
             'schoolRequest' => $schoolRequest,
             'awaitingMe' => $schoolRequest->isAwaiting($user),
+            'canIssue' => $canIssue,
             'assignableUsers' => $schoolRequest->canBeAssignedBy($user)
                 ? User::where('status', 1)->orderBy('name')->get(['id', 'name'])
                 : collect(),
@@ -178,14 +183,13 @@ class RequestController extends Controller
                 Rule::exists('schools', 'id')->where('is_active', true),
             ],
             'title' => 'required|string|max:150',
-            'description' => 'required|string|max:5000',
             'justification' => 'nullable|string|max:5000',
             'required_date' => 'nullable|date_format:Y-m-d',
             'suggested_priority' => ['nullable', Rule::in(array_keys(SchoolRequest::PRIORITY_LABELS))],
             // Item lines, as on the paper form. Each is an existing, active inventory item.
             'items' => 'nullable|array|max:50',
             'items.*.item_id' => ['required', 'integer', 'distinct', Rule::exists('inv_items', 'id')->where('is_active', true), $this->inStock($schoolRequest)],
-            'items.*.quantity' => 'required|numeric|gt:0',
+            'items.*.quantity' => ['required', 'numeric', 'gt:0', $this->withinStock()],
             'attachments' => 'nullable|array|max:10',
             'attachments.*' => RequestAttachment::FILE_RULE,
         ], [
@@ -277,6 +281,29 @@ class RequestController extends Controller
 
             if ((float) StockBalance::where('item_id', (int) $value)->sum('quantity') <= 0) {
                 $fail('An item you chose is not in stock. Choose items from the list only.');
+            }
+        };
+    }
+
+    /**
+     * A line cannot ask for more than the stores hold of its item.
+     */
+    private function withinStock(): \Closure
+    {
+        return function (string $attribute, mixed $value, \Closure $fail): void {
+            if (! is_numeric($value)) {
+                return;
+            }
+
+            $itemId = (int) request()->input(preg_replace('/quantity$/', 'item_id', $attribute));
+            if ($itemId === 0) {
+                return;
+            }
+
+            $available = (float) StockBalance::where('item_id', $itemId)->sum('quantity');
+            if ((float) $value > $available + 0.0001) {
+                $name = Item::whereKey($itemId)->value('name');
+                $fail($name.': only '.rtrim(rtrim(number_format($available, 3, '.', ''), '0'), '.').' available in stock, so you cannot ask for '.rtrim(rtrim(number_format((float) $value, 3, '.', ''), '0'), '.').'.');
             }
         };
     }

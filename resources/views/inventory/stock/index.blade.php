@@ -29,7 +29,6 @@
                         @endforeach
                     </select>
                 </div>
-                <div class="col-auto text-body-secondary small">Shared by Kindergarten, Primary and Secondary.</div>
             </form>
         </div>
         <div class="card-body p-0">

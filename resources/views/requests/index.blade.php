@@ -1,7 +1,7 @@
 @extends("layouts.master")
 
 @php
-    $titles = ['mine' => 'My Requests', 'inbox' => 'Awaiting My Action', 'all' => 'All Requests'];
+    $titles = ['mine' => 'My Requests', 'inbox' => 'Awaiting My Action', 'assigned' => 'Assigned to Me', 'all' => 'All Requests'];
 @endphp
 
 @section('content-title')
@@ -22,7 +22,7 @@
                 <a href="{{ route('requests.create') }}" class="btn btn-primary btn-sm"><i class="bi bi-plus-lg"></i> New request</a>
             </div>
         </div>
-        @if ($scope !== 'inbox')
+        @if (! in_array($scope, ['inbox', 'assigned'], true))
             <div class="card-body border-bottom py-2">
                 <form method="GET" action="{{ route('requests.index') }}" class="row g-2 align-items-center">
                     <input type="hidden" name="scope" value="{{ $scope }}">
@@ -72,7 +72,7 @@
                         @empty
                             <tr>
                                 <td colspan="{{ $scope === 'mine' ? 6 : 8 }}" class="text-muted p-3">
-                                    {{ $scope === 'inbox' ? 'Nothing is waiting for your action.' : 'No requests to show.' }}
+                                    {{ $scope === 'inbox' ? 'Nothing is waiting for your action.' : ($scope === 'assigned' ? 'Nothing is assigned to you.' : 'No requests to show.') }}
                                 </td>
                             </tr>
                         @endforelse

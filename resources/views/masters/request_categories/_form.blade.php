@@ -14,10 +14,6 @@
                         <label class="form-label">Name <span class="text-danger">*</span></label>
                         <input type="text" name="name" class="form-control category-name" maxlength="100" required value="{{ old('name') }}">
                     </div>
-                    <div class="col-12">
-                        <label class="form-label">Description</label>
-                        <textarea name="description" class="form-control category-description" rows="2" maxlength="255">{{ old('description') }}</textarea>
-                    </div>
                     <div class="col-md-6">
                         <div class="form-check form-switch">
                             <input type="checkbox" name="requires_director" value="1" class="form-check-input category-director" id="request-category-director" @checked(old('requires_director', false))>
@@ -62,7 +58,6 @@
                 $form.find('[name=_method]').val(b.data('method'));
                 $modal.find('.modal-title').text(b.data('title'));
                 $form.find('.category-name').val(b.data('name') ?? '');
-                $form.find('.category-description').val(b.data('description') ?? '');
                 $form.find('.category-director').prop('checked', b.data('director') === 1 || b.data('director') === '1');
                 $form.find('.category-threshold').val(b.data('threshold') ?? '');
                 $form.find('.category-active').prop('checked', b.data('active') === undefined ? true : (b.data('active') === 1 || b.data('active') === '1'));

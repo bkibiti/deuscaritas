@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\Inventory\StockDocument;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -53,7 +54,7 @@ class SchoolRequest extends Model
     protected $table = 'requests';
 
     protected $fillable = [
-        'requester_id', 'department_id', 'school_id', 'request_category_id', 'title', 'description',
+        'requester_id', 'department_id', 'school_id', 'request_category_id', 'title',
         'justification', 'required_date', 'quantity', 'estimated_cost', 'suggested_priority',
     ];
 
@@ -194,16 +195,48 @@ class SchoolRequest extends Model
         return $this->status === self::STATUS_PENDING && $this->currentApproval?->isActionableBy($user) === true;
     }
 
+    /**
+     * Once approved, whoever signed the last step (or holds its role, the Director) hands the
+     * request to a staff member to carry out. The Assign Requests permission also allows it.
+     */
     public function canBeAssignedBy(User $user): bool
     {
         return in_array($this->status, [self::STATUS_APPROVED, self::STATUS_IN_PROGRESS], true)
-            && $user->can('Assign Requests');
+            && ($user->can('Assign Requests') || $this->signedLastBy($user));
     }
 
+    private function signedLastBy(User $user): bool
+    {
+        $last = $this->approvals()->where('status', RequestApproval::STATUS_APPROVED)
+            ->reorder()->orderByDesc('round')->orderByDesc('position')->first();
+
+        return $last !== null && ((int) $last->acted_by === $user->id || $user->holdsRole($last->role_id, $last->scope_school_id));
+    }
+
+    /**
+     * A request for items is completed by issuing them from the stores. Any other request is
+     * completed with a note and evidence.
+     */
     public function canBeCompletedBy(User $user): bool
     {
         return $this->status === self::STATUS_IN_PROGRESS
+            && ! $this->items()->exists()
             && ($this->assigned_to === $user->id || $user->can('Assign Requests'));
+    }
+
+    /**
+     * Only the person it was assigned to releases the items.
+     */
+    public function canBeIssuedBy(User $user): bool
+    {
+        return $this->status === self::STATUS_IN_PROGRESS
+            && $this->assigned_to === $user->id
+            && $this->items()->exists();
+    }
+
+    public function stockDocuments(): HasMany
+    {
+        return $this->hasMany(StockDocument::class, 'request_id');
     }
 
     /**
@@ -251,7 +284,6 @@ class SchoolRequest extends Model
             $this->school_id,
             $this->request_category_id,
             $this->title,
-            $this->description,
             $this->justification,
             $this->required_date?->toDateString(),
             $this->quantity === null ? null : (string) $this->quantity,

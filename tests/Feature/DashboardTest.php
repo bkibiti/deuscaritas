@@ -2,8 +2,6 @@
 
 namespace Tests\Feature;
 
-use App\Models\Department;
-use App\Models\School;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
@@ -17,21 +15,13 @@ class DashboardTest extends TestCase
         $response = $this->actingAs(User::factory()->create())->get(route('home'));
 
         $response->assertOk();
-        $response->assertViewHas('counts');
+        $response->assertViewHas('tiles');
     }
 
-    public function test_the_dashboard_counts_only_active_master_data(): void
+    public function test_the_dashboard_has_no_set_up_section(): void
     {
-        $school = School::create(['name' => 'Primary', 'is_active' => true]);
-        School::create(['name' => 'Closed Campus', 'is_active' => false]);
-        Department::create(['name' => 'ICT', 'school_id' => $school->id, 'is_active' => true]);
-
-        $counts = collect($this->actingAs(User::factory()->create())->get(route('home'))->viewData('counts'))
-            ->pluck('value', 'label');
-
-        $this->assertSame(1, $counts['Schools']);
-        // The ten official departments, plus this one.
-        $this->assertSame(11, $counts['Departments']);
+        $this->actingAs(User::factory()->create())->get(route('home'))
+            ->assertOk()->assertDontSee('Set-up');
     }
 
     public function test_master_data_links_are_hidden_without_permission(): void

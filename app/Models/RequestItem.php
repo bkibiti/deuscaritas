@@ -13,13 +13,14 @@ class RequestItem extends Model
 {
     protected $table = 'request_items';
 
-    protected $fillable = ['request_id', 'item_id', 'position', 'quantity', 'unit_price', 'amount'];
+    protected $fillable = ['request_id', 'item_id', 'position', 'quantity', 'issued_quantity', 'unit_price', 'amount'];
 
     protected function casts(): array
     {
         return [
             'item_id' => 'integer',
             'quantity' => 'decimal:3',
+            'issued_quantity' => 'decimal:3',
             'unit_price' => 'decimal:2',
             'amount' => 'decimal:2',
         ];

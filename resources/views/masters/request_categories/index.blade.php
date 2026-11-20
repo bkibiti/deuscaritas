@@ -29,7 +29,6 @@
                     <thead>
                         <tr>
                             <th>Name</th>
-                            <th>Description</th>
                             <th>Director approval</th>
                             <th>Status</th>
                             <th></th>
@@ -39,7 +38,6 @@
                         @forelse ($categories as $category)
                             <tr>
                                 <td>{{ $category->name }}</td>
-                                <td>{{ $category->description ?: '—' }}</td>
                                 <td>
                                     @if ($category->requires_director)
                                         Always
@@ -54,7 +52,7 @@
                                     @can('Manage Request Categories')
                                         <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#request-category-modal"
                                             data-action="{{ route('request-categories.update', $category) }}" data-method="PUT" data-title="Edit request category"
-                                            data-name="{{ $category->name }}" data-description="{{ $category->description }}"
+                                            data-name="{{ $category->name }}"
                                             data-director="{{ $category->requires_director ? 1 : 0 }}" data-threshold="{{ $category->director_cost_threshold }}"
                                             data-active="{{ $category->is_active ? 1 : 0 }}">
                                             Edit
@@ -69,7 +67,7 @@
                                 </td>
                             </tr>
                         @empty
-                            <tr><td colspan="5" class="text-muted p-3">No request categories yet.</td></tr>
+                            <tr><td colspan="4" class="text-muted p-3">No request categories yet.</td></tr>
                         @endforelse
                     </tbody>
                 </table>

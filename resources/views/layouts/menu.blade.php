@@ -1,10 +1,11 @@
 @php
     $usersActive = request()->routeIs('roles.*', 'users.*');
-    $mastersActive = request()->routeIs('schools.*', 'departments.*', 'request-categories.*', 'workflow-steps.*', 'configurations.*');
-    $requestScope = request()->routeIs('requests.index') ? (in_array(request('scope'), ['inbox', 'all'], true) ? request('scope') : 'mine') : null;
+    $mastersActive = request()->routeIs('schools.*', 'departments.*', 'request-categories.*', 'workflow-steps.*', 'configurations.*', 'inventory.items.*', 'inventory.categories.*', 'inventory.units.*');
+    $requestScope = request()->routeIs('requests.index') ? (in_array(request('scope'), ['inbox', 'assigned', 'all'], true) ? request('scope') : 'mine') : null;
     $requestsActive = request()->routeIs('requests.*');
-    $inventoryActive = request()->routeIs('inventory.*');
+    $inventoryActive = request()->routeIs('inventory.*') && ! $mastersActive;
     $awaitingMyAction = \App\Models\SchoolRequest::awaitingActionBy(auth()->user())->count();
+    $assignedToMe = assignedToMe();
 @endphp
 
 <li class="nav-item">
@@ -49,6 +50,17 @@
                 </p>
             </a>
         </li>
+        <li class="nav-item">
+            <a href="{{ route('requests.index', ['scope' => 'assigned']) }}" class="nav-link {{ $requestScope === 'assigned' ? 'active' : '' }}">
+                <i class="nav-icon bi bi-circle"></i>
+                <p>
+                    Assigned to Me
+                    @if ($assignedToMe > 0)
+                        <span class="badge text-bg-warning">{{ $assignedToMe }}</span>
+                    @endif
+                </p>
+            </a>
+        </li>
         @can('View All Requests')
             <li class="nav-item">
                 <a href="{{ route('requests.index', ['scope' => 'all']) }}" class="nav-link {{ $requestScope === 'all' ? 'active' : '' }}">
@@ -60,7 +72,7 @@
     </ul>
 </li>
 
-@canany(['View Stock', 'View Inventory Items', 'View Suppliers', 'View Inventory Setup'])
+@canany(['View Stock', 'View Suppliers', 'View Inventory Setup'])
     <li class="nav-item {{ $inventoryActive ? 'menu-open' : '' }}">
         <a href="#" class="nav-link {{ $inventoryActive ? 'active' : '' }}">
             <i class="nav-icon bi bi-box-seam"></i>
@@ -81,14 +93,6 @@
                     </a>
                 </li>
             @endcan
-            @can('View Inventory Items')
-                <li class="nav-item">
-                    <a href="{{ route('inventory.items.index') }}" class="nav-link {{ request()->routeIs('inventory.items.*') ? 'active' : '' }}">
-                        <i class="nav-icon bi bi-circle"></i>
-                        <p>Items</p>
-                    </a>
-                </li>
-            @endcan
             @can('View Suppliers')
                 <li class="nav-item">
                     <a href="{{ route('inventory.suppliers.index') }}" class="nav-link {{ request()->routeIs('inventory.suppliers.*') ? 'active' : '' }}">
@@ -98,18 +102,6 @@
                 </li>
             @endcan
             @can('View Inventory Setup')
-                <li class="nav-item">
-                    <a href="{{ route('inventory.categories.index') }}" class="nav-link {{ request()->routeIs('inventory.categories.*') ? 'active' : '' }}">
-                        <i class="nav-icon bi bi-circle"></i>
-                        <p>Item Categories</p>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a href="{{ route('inventory.units.index') }}" class="nav-link {{ request()->routeIs('inventory.units.*') ? 'active' : '' }}">
-                        <i class="nav-icon bi bi-circle"></i>
-                        <p>Units of Measure</p>
-                    </a>
-                </li>
                 <li class="nav-item">
                     <a href="{{ route('inventory.stores.index') }}" class="nav-link {{ request()->routeIs('inventory.stores.*') ? 'active' : '' }}">
                         <i class="nav-icon bi bi-circle"></i>
@@ -148,7 +140,7 @@
     </li>
 @endcanany
 
-@canany(['View Administration', 'View Schools', 'View Departments', 'View Request Categories', 'View Approval Chain', 'View Settings'])
+@canany(['View Administration', 'View Schools', 'View Departments', 'View Request Categories', 'View Inventory Items', 'View Inventory Setup', 'View Approval Chain', 'View Settings'])
     <li class="nav-item {{ $mastersActive ? 'menu-open' : '' }}">
         <a href="#" class="nav-link {{ $mastersActive ? 'active' : '' }}">
             <i class="nav-icon bi bi-list-ul"></i>
@@ -176,6 +168,30 @@
                     <a href="{{ route('request-categories.index') }}" class="nav-link {{ request()->routeIs('request-categories.*') ? 'active' : '' }}">
                         <i class="nav-icon bi bi-circle"></i>
                         <p>Request Categories</p>
+                    </a>
+                </li>
+            @endcan
+            @can('View Inventory Items')
+                <li class="nav-item">
+                    <a href="{{ route('inventory.items.index') }}" class="nav-link {{ request()->routeIs('inventory.items.*') ? 'active' : '' }}">
+                        <i class="nav-icon bi bi-circle"></i>
+                        <p>Items</p>
+                    </a>
+                </li>
+            @endcan
+            @can('View Inventory Setup')
+                <li class="nav-item">
+                    <a href="{{ route('inventory.categories.index') }}" class="nav-link {{ request()->routeIs('inventory.categories.*') ? 'active' : '' }}">
+                        <i class="nav-icon bi bi-circle"></i>
+                        <p>Item Categories</p>
+                    </a>
+                </li>
+            @endcan
+            @can('View Inventory Setup')
+                <li class="nav-item">
+                    <a href="{{ route('inventory.units.index') }}" class="nav-link {{ request()->routeIs('inventory.units.*') ? 'active' : '' }}">
+                        <i class="nav-icon bi bi-circle"></i>
+                        <p>Units of Measure</p>
                     </a>
                 </li>
             @endcan

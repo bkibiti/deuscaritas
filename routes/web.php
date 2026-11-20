@@ -16,6 +16,7 @@ use App\Http\Controllers\RequestCategoryController;
 use App\Http\Controllers\RequestController;
 use App\Http\Controllers\RequestDecisionController;
 use App\Http\Controllers\RequestFulfilmentController;
+use App\Http\Controllers\RequestIssueController;
 use App\Http\Controllers\RoleController;
 use App\Http\Controllers\SchoolController;
 use App\Http\Controllers\UserController;
@@ -54,6 +55,9 @@ Route::middleware(['auth', EnsurePasswordIsNotExpired::class])->group(function (
 
     Route::post('requests/{schoolRequest}/assign', [RequestFulfilmentController::class, 'assign'])->name('requests.assign');
     Route::post('requests/{schoolRequest}/complete', [RequestFulfilmentController::class, 'complete'])->name('requests.complete');
+    Route::get('requests/{schoolRequest}/issue', [RequestIssueController::class, 'create'])->name('requests.issue.create');
+    Route::post('requests/{schoolRequest}/issue', [RequestIssueController::class, 'store'])->name('requests.issue');
+    Route::get('requests/{schoolRequest}/issue-notes/{document}', [RequestIssueController::class, 'note'])->name('requests.issue-note');
 
     Route::get('requests/{schoolRequest}/attachments/{attachment}', [RequestAttachmentController::class, 'download'])->name('requests.attachments.download');
     Route::delete('requests/{schoolRequest}/attachments/{attachment}', [RequestAttachmentController::class, 'destroy'])->name('requests.attachments.destroy');

@@ -18,7 +18,7 @@ class RoleBasedApprovalUpgradeTest extends TestCase
 
     public function test_named_approvers_and_school_heads_become_role_holders(): void
     {
-        Artisan::call('migrate:rollback', ['--step' => 4]);
+        Artisan::call('migrate:rollback', ['--step' => 6]);
 
         [$head, $manager, $staff, $requester] = User::factory()->count(4)->create()->all();
 

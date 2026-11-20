@@ -2,6 +2,7 @@
 
 namespace App\Models\Inventory;
 
+use App\Models\SchoolRequest;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -17,13 +18,15 @@ class StockDocument extends Model
 
     public const TYPE_OPENING = 'opening';
 
+    public const TYPE_ISSUE = 'issue';
+
     public const STATUS_DRAFT = 'draft';
 
     public const STATUS_CONFIRMED = 'confirmed';
 
     protected $table = 'inv_stock_documents';
 
-    protected $fillable = ['number', 'type', 'store_id', 'supplier_id', 'reference', 'document_date', 'notes', 'status', 'created_by'];
+    protected $fillable = ['number', 'type', 'store_id', 'supplier_id', 'reference', 'document_date', 'notes', 'status', 'created_by', 'request_id', 'received_by'];
 
     protected function casts(): array
     {
@@ -48,6 +51,21 @@ class StockDocument extends Model
         return $this->hasMany(StockDocumentLine::class, 'document_id');
     }
 
+    public function request(): BelongsTo
+    {
+        return $this->belongsTo(SchoolRequest::class, 'request_id');
+    }
+
+    public function receiver(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'received_by');
+    }
+
+    public function isIssue(): bool
+    {
+        return $this->type === self::TYPE_ISSUE;
+    }
+
     public function creator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'created_by');
@@ -65,7 +83,11 @@ class StockDocument extends Model
 
     public function typeLabel(): string
     {
-        return $this->type === self::TYPE_OPENING ? 'Opening stock' : 'Delivery';
+        return match ($this->type) {
+            self::TYPE_OPENING => 'Opening stock',
+            self::TYPE_ISSUE => 'Issue',
+            default => 'Delivery',
+        };
     }
 
     public function totalValue(): float

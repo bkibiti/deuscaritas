@@ -19,7 +19,7 @@ class ApprovalChainTest extends TestCase
             WorkflowStep::orderBy('position')->pluck('key')->all(),
             'There is no department head step.'
         );
-        $this->assertSame('director_rule', WorkflowStep::where('key', 'director')->value('condition'));
+        $this->assertSame('always', WorkflowStep::where('key', 'director')->value('condition'));
         $this->assertSame('Head of School', WorkflowStep::where('key', 'school_head')->first()->role->name);
         $this->assertTrue(WorkflowStep::where('key', 'school_head')->first()->isSchoolScoped());
         $this->assertFalse(WorkflowStep::where('key', 'manager')->first()->isSchoolScoped());

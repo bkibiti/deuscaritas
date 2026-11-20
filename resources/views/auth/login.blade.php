@@ -76,11 +76,7 @@
             </form>
         </section>
 
-        <ul class="signin-motto" aria-label="What the system is for">
-            <li>Every request visible</li>
-            <li>Every action tracked</li>
-            <li>Every decision accountable</li>
-        </ul>
+      
 
         <p class="signin-copyright">&copy; {{ date('Y') }} {{ groupName() }}</p>
     </main>

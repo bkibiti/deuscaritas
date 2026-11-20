@@ -54,11 +54,6 @@
             @error('title') <div class="invalid-feedback">{{ $message }}</div> @enderror
         </div>
         <div class="col-12">
-            <label class="form-label">Description <span class="text-danger">*</span></label>
-            <textarea name="description" class="form-control @error('description') is-invalid @enderror" rows="4" maxlength="5000" required>{{ old('description', $schoolRequest->description) }}</textarea>
-            @error('description') <div class="invalid-feedback">{{ $message }}</div> @enderror
-        </div>
-        <div class="col-12">
             <label class="form-label">Reason / justification</label>
             <textarea name="justification" class="form-control @error('justification') is-invalid @enderror" rows="3" maxlength="5000">{{ old('justification', $schoolRequest->justification) }}</textarea>
             @error('justification') <div class="invalid-feedback">{{ $message }}</div> @enderror
@@ -152,6 +147,14 @@
                     $row.find('.request-item-sn').text(String(position + 1).padStart(2, '0'));
                     $row.find('.request-item-unit').text($option.data('unit') || '');
                     $row.find('.request-item-available').text(available === undefined || $option.val() === '' ? '' : format(available));
+
+                    // Stop a quantity above what the stores hold.
+                    var $quantity = $row.find('.request-item-quantity');
+                    var wanted = parseFloat($quantity.val());
+                    var tooMuch = available !== undefined && $option.val() !== '' && ! isNaN(wanted) && wanted > available + 0.0001;
+                    $quantity.toggleClass('is-invalid', tooMuch);
+                    $quantity.attr('max', $option.val() === '' ? null : available);
+                    $quantity[0].setCustomValidity(tooMuch ? 'Only ' + format(available) + ' available in stock.' : '');
                 });
             }
 
